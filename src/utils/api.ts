@@ -28,6 +28,17 @@ export const apiClient = {
     return response.json();
   },
 
+  async patch(endpoint: string, data: any) {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('API request failed');
+    return response.json();
+  },
+
   async put(endpoint: string, data: any) {
     const headers = await this.getAuthHeaders();
     const response = await fetch(`${API_URL}${endpoint}`, {

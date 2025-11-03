@@ -7,7 +7,7 @@ export const PhotoGallery: React.FC<{
   onPhotoUpload: (dataUrl: string) => void;
   onPhotoDelete: (id: string) => void;
 }> = ({ photos, onPhotoUpload, onPhotoDelete }) => {
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();

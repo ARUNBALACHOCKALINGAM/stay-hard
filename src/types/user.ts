@@ -4,7 +4,7 @@ export interface User {
   email: string;
   photoUrl?: string;
   firebaseUid: string;
-  currentChallengeId?: string;
+  currentChallengeId: string;
   emailVerified: boolean;
   lastLogin?: Date;
   createdAt: Date;

@@ -12,7 +12,7 @@ export const LoginPage: React.FC<{
 }> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-    const handleGoogleSignIn = async () => {
+const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
       const result = await signInWithPopup(auth, provider);
@@ -39,7 +39,7 @@ export const LoginPage: React.FC<{
           email: user.email || "",
           photoUrl: user.photoURL || "",
           firebaseUid: user.uid || '',
-          currentChallengeId: undefined,
+          currentChallengeId: 'undefined',
           emailVerified: !!user.emailVerified,
           lastLogin: new Date(),
           createdAt: new Date(),
@@ -72,7 +72,7 @@ export const LoginPage: React.FC<{
             email: user.email || "",
             photoUrl: user.photoURL || "",
             firebaseUid: user.uid || '',
-            currentChallengeId: undefined,
+            currentChallengeId: 'undefined',
             emailVerified: !!user.emailVerified,
             lastLogin: new Date(),
             createdAt: new Date(),
