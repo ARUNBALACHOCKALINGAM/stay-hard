@@ -1,8 +1,10 @@
 import { signInWithPopup } from "firebase/auth";
-import { auth, provider } from "../firebaseConfig.ts";
+import { auth, provider } from "../firebaseConfig";
 import { Check } from "lucide-react";
 import type { User } from "../types/user";
 import { useState } from "react";
+import { API_URL } from "../utils/config";
+
 
 // Login Component
 export const LoginPage: React.FC<{
@@ -16,12 +18,69 @@ export const LoginPage: React.FC<{
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       console.log("Google sign-in successful:", user.photoURL);
-      const loggedInUser: User = {
-        name: user.displayName || "User",
-        email: user.email || "",
-        photoUrl: user.photoURL || "",
-      };
-      onLogin(loggedInUser);
+
+      // Get Firebase ID token and send to backend to verify/create user
+      const idToken = await user.getIdToken();
+
+      const resp = await fetch(`${API_URL}/auth/verify`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!resp.ok) {
+        // If backend verification fails, fall back to basic client user info
+        console.warn('Backend token verification failed', resp.status);
+        const fallbackUser: User = {
+          _id: '',
+          name: user.displayName || "User",
+          email: user.email || "",
+          photoUrl: user.photoURL || "",
+          firebaseUid: user.uid || '',
+          currentChallengeId: undefined,
+          emailVerified: !!user.emailVerified,
+          lastLogin: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as User;
+        onLogin(fallbackUser);
+      } else {
+        const data = await resp.json();
+        // backend returns { user, message }
+        const backendUser = data?.user;
+        if (backendUser) {
+          // Map backend user shape to frontend User type if needed
+          const mapped: User = {
+            _id: backendUser._id || backendUser.id || '',
+            name: backendUser.name || user.displayName || 'User',
+            email: backendUser.email || user.email || '',
+            photoUrl: backendUser.photoUrl || user.photoURL || '',
+            firebaseUid: backendUser.firebaseUid || user.uid || '',
+            currentChallengeId: backendUser.currentChallengeId,
+            emailVerified: backendUser.emailVerified || false,
+            lastLogin: backendUser.lastLogin ? new Date(backendUser.lastLogin) : new Date(),
+            createdAt: backendUser.createdAt ? new Date(backendUser.createdAt) : new Date(),
+            updatedAt: backendUser.updatedAt ? new Date(backendUser.updatedAt) : new Date(),
+          } as User;
+          onLogin(mapped);
+        } else {
+          const fallbackUser: User = {
+            _id: '',
+            name: user.displayName || "User",
+            email: user.email || "",
+            photoUrl: user.photoURL || "",
+            firebaseUid: user.uid || '',
+            currentChallengeId: undefined,
+            emailVerified: !!user.emailVerified,
+            lastLogin: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          } as User;
+          onLogin(fallbackUser);
+        }
+      }
     } catch (error) {
       console.error("Google sign-in error:", error);
       alert("Failed to sign in with Google. Please try again.");

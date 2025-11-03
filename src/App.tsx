@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Camera, List, LogOut, UserIcon } from 'lucide-react';
 import type { ProgressPhoto } from './types/progressphoto';
 import type { AppState } from './types/appstate';
-import { getDefaultTasks, getTodayDate } from './utils';
+import { getDefaultTasks, getTodayDate } from './utils/utils';
 import type { Task } from './types/task';
 import { TodoList } from './components/TodoList';
 import { Settings } from './components/Settings';
@@ -12,6 +12,7 @@ import { LoginPage } from './components/LoginComponent';
 import type { User } from './types/user';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebaseConfig';
+import { userService } from './services/userService';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -52,13 +53,30 @@ export default function App() {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUser({
-          name: user.displayName || "User",
-          email: user.email || "",
-          photoUrl: user.photoURL || "",
-        });
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          // Verify with backend and fetch stored user/settings
+          const backendUser = await userService.verifyAuth();
+          setUser(backendUser);
+
+          // Load user settings and merge into state
+          try {
+            const settings = await userService.getSettings(backendUser._id);
+            setState(prev => ({
+              ...prev,
+              days: settings.days,
+              level: settings.level,
+              startDate: settings.startDate
+            }));
+          } catch (err) {
+            console.warn('Failed to load user settings from backend', err);
+          }
+        } catch (err) {
+          console.error('Backend verification failed, signing out:', err);
+          await signOut(auth);
+          setUser(null);
+        }
       } else {
         setUser(null);
       }

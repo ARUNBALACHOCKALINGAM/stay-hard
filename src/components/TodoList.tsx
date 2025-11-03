@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Task } from "../types/task";
-import { getTodayDate } from "../utils";
+import { getTodayDate } from "../utils/utils";
 import { Check, Plus, Trash2 } from "lucide-react";
 
 // TodoList Component

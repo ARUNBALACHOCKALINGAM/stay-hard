@@ -1,5 +1,5 @@
 import type { DayProgress } from "../types/dayprogress";
-import { formatDate, getCompletionColor, getTodayDate } from "../utils";
+import { formatDate, getCompletionColor, getTodayDate } from "../utils/utils";
 
 // ProgressGrid Component
 export const ProgressGrid: React.FC<{
