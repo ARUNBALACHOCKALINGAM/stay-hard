@@ -16,7 +16,7 @@ import progressService from '../services/progressService';
 const INITIAL_STATE: AppState = {
   days: 21,
   level: 'Soft',
-  startDate: getTodayDate(),
+  startDate: '', // Will be set from backend when progress loads
   dailyProgress: {},
   photos: []
 };
@@ -48,6 +48,8 @@ export function useAppState(user: User | null) {
 
       // Build a map keyed by date
       const progressMap: Record<string, any> = {};
+      let earliestDate = '';
+      
       items.forEach((p: any) => {
         const tasksFromServer: Task[] = Array.isArray(p.tasks)
           ? p.tasks.map((t: any) => ({
@@ -67,12 +69,19 @@ export function useAppState(user: User | null) {
           completionRate: typeof p.completionRate === 'number' ? p.completionRate : completionRate,
           tasks: tasksFromServer,
           progressId: p._id,
+          dayNumber: p.dayNumber, // Include day number from server
         };
+        
+        // Track the earliest date (Day 1)
+        if (!earliestDate || p.date < earliestDate) {
+          earliestDate = p.date;
+        }
       });
 
       // Merge into state
       setState(prev => ({
         ...prev,
+        startDate: earliestDate || getTodayDate(), // Use earliest date, or today if no progress yet
         dailyProgress: {
           ...prev.dailyProgress,
           ...progressMap,
@@ -121,7 +130,8 @@ export function useAppState(user: User | null) {
               date,
               completionRate,
               tasks: tasksFromServer,
-              progressId: progressData._id // Store the server-side document ID
+              progressId: progressData._id, // Store the server-side document ID
+              dayNumber: progressData.dayNumber // Include day number from server
             }
           }
         }));
@@ -554,11 +564,10 @@ export function useAppState(user: User | null) {
   const handleDaysChange = useCallback(async (days: 21 | 45 | 60 | 75) => {
     if (!challengeId) return console.error('No challenge ID available for update');
 
-    // 1. Optimistic UI Update
+    // 1. Optimistic UI Update (keep existing startDate, don't reset it)
     setState(prev => ({
       ...prev,
-      days,
-      startDate: getTodayDate()
+      days
     }));
 
     try {

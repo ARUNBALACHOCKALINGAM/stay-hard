@@ -126,6 +126,8 @@ export default function App() {
                 onTaskDelete={handleTaskDelete}
                 onTaskEdit={handleTaskEdit}
                 canCustomize={state.level === 'Custom'}
+                startDate={state.startDate}
+                dailyProgress={state.dailyProgress}
               />
             </div>
 
