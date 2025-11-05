@@ -7,8 +7,9 @@ import type { User } from '../types/user';
 import type { Task } from '../types/task';
 import type { AppState } from '../types/appstate';
 import type { ProgressPhoto } from '../types/progressphoto';
-import { getDefaultTasks, getTodayDate } from '../utils/utils'; 
+import { getDefaultTasks, getTodayDate } from '../utils/utils';
 import { challengeService } from '../services/challengeService';
+import progressService from '../services/progressService';
 
 
 // Constants
@@ -27,12 +28,16 @@ const INITIAL_STATE: AppState = {
 export function useAppState(user: User | null) {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
   const [activeTab, setActiveTab] = useState<'tasks' | 'photos'>('tasks');
-  
+
   // Derived State (Can be calculated directly inside the hook)
   const today = getTodayDate();
   const todayTasks = state.dailyProgress[today]?.tasks || [];
 
   // --- Handlers: Daily Progress Initialization ---
+
+  // Cast user for challenge-related logic, assuming existence is checked before usage
+  const appUser = user as User;
+  const challengeId = appUser?.currentChallengeId;
 
   const initializeDailyProgress = useCallback((date: string) => {
     const tasks = getDefaultTasks(state.level);
@@ -47,7 +52,16 @@ export function useAppState(user: User | null) {
         }
       }
     }));
-  }, [state.level]);
+
+    try {
+      const progressId = progressService.getTasksForDate({userId: user._id,challengeId:challengeId!, date:date});
+      if (!progressId) {
+        console.log('No existing progress found for today');
+      }
+    } catch (error) {
+      console.error('Error initializing daily progress:', error);
+    }
+  }, [state.level, challengeId]);
 
   // Initialize Daily Progress Effect (Moved from App.tsx)
   useEffect(() => {
@@ -181,9 +195,7 @@ export function useAppState(user: User | null) {
 
 
 
-  // Cast user for challenge-related logic, assuming existence is checked before usage
-  const appUser = user as User; 
-  const challengeId = appUser?.currentChallengeId;
+
 
   // --- Handlers: Settings & State Reset (Now with API Calls) ---
 
@@ -191,10 +203,10 @@ export function useAppState(user: User | null) {
     if (!challengeId) return console.error('No challenge ID available for update');
 
     // 1. Optimistic UI Update
-    setState(prev => ({ 
-      ...prev, 
-      days, 
-      startDate: getTodayDate() 
+    setState(prev => ({
+      ...prev,
+      days,
+      startDate: getTodayDate()
     }));
 
     try {
@@ -209,10 +221,10 @@ export function useAppState(user: User | null) {
 
   const handleLevelChange = useCallback(async (level: 'Soft' | 'Hard' | 'Custom') => {
     if (!challengeId) return console.error('No challenge ID available for update');
-    
+
     // Get the tasks that will be sent to the API if level is Custom
-    const tasksToSend = level === 'Custom' 
-      ? state.dailyProgress[getTodayDate()]?.tasks 
+    const tasksToSend = level === 'Custom'
+      ? state.dailyProgress[getTodayDate()]?.tasks
       : undefined;
 
     // 1. Optimistic UI Update
@@ -247,19 +259,17 @@ export function useAppState(user: User | null) {
 
   const handleResetProgress = useCallback(async () => {
     if (!challengeId) return console.error('No challenge ID available for reset');
+    // 1. Optimistic UI Update
+    setState(INITIAL_STATE);
 
-    if (window.confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
-      // 1. Optimistic UI Update
-      setState(INITIAL_STATE);
-      
-      try {
-        // 2. Immediate API Write
-        await challengeService.resetProgress(challengeId);
-      } catch (error) {
-        console.error('Failed to reset challenge progress on server:', error);
-        // Optional: Re-fetch or show error to the user
-      }
+    try {
+      // 2. Immediate API Write
+      await challengeService.resetProgress(challengeId);
+    } catch (error) {
+      console.error('Failed to reset challenge progress on server:', error);
+      // Optional: Re-fetch or show error to the user
     }
+
   }, [challengeId]);
 
 

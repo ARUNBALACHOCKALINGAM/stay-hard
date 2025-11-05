@@ -17,7 +17,6 @@ const handleGoogleSignIn = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      console.log("Google sign-in successful:", user.photoURL);
 
       // Get Firebase ID token and send to backend to verify/create user
       const idToken = await user.getIdToken();

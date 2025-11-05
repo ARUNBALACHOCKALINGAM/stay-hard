@@ -11,9 +11,7 @@ export const Settings: React.FC<{
   const levelOptions: ('Soft' | 'Hard' | 'Custom')[] = ['Soft', 'Hard', 'Custom'];
 
   const handleResetClick = () => {
-    if (confirm("Are you sure you want to reset your progress? This action cannot be undone.")) {
       onResetProgress?.();
-    }
   };
 
   return (

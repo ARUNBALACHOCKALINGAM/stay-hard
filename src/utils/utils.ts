@@ -1,3 +1,5 @@
+import type { Task } from "../types/task";
+
 // Utility functions
 export const formatDate = (date: Date): string => {
   return date.toISOString().split('T')[0];

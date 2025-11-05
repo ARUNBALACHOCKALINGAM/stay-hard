@@ -1,15 +1,10 @@
 // src/App.tsx (Updated File)
-
 import { useState, useEffect, useCallback } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-// Removed unused imports from lucide-react (Camera, List, LogOut, UserIcon)
-// ... as they are likely used only in sub-components.
+
 
 // Types
 import type { User } from './types/user'; 
-// import type { Task } from './types/task'; // No longer needed here
-// import type { AppState } from './types/appstate'; // No longer needed here
-// import type { ProgressPhoto } from './types/progressphoto'; // No longer needed here
 
 // Components
 import { LoginPage } from './components/LoginComponent';
@@ -24,13 +19,13 @@ import { ProgressGrid } from './components/ProgressGrid';
 // Services & Utils
 import { auth } from './firebaseConfig';
 import { authService } from './services/authService';
-// Removed unused imports: getDefaultTasks, getTodayDate
+
 
 // ⭐️ Import the new custom hook
 import { useAppState } from './hooks/useAppState'; 
 
 export default function App() {
-  // State Management (Only Auth/UI state remains)
+  // State Management for Authentication
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
