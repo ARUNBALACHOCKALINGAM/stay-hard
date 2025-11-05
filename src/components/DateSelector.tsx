@@ -20,11 +20,6 @@ export const DateSelector: React.FC<DateSelectorProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  if (!startDate) return null; // Don't render until startDate is loaded
-
-  const currentDateObj = new Date(currentDate);
-  const startDateObj = new Date(startDate);
-
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -38,6 +33,14 @@ export const DateSelector: React.FC<DateSelectorProps> = ({
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isDropdownOpen]);
+
+  // Don't render until startDate is loaded from backend
+  if (!startDate) {
+    return null;
+  }
+
+  const currentDateObj = new Date(currentDate);
+  const startDateObj = new Date(startDate);
 
   // Calculate day number from the start
   const daysSinceStart = Math.floor(
