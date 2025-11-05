@@ -5,6 +5,11 @@ interface TaskUpdateBody {
   completed: boolean;
 }
 
+// Define the expected structure for adding/editing task text
+interface TaskTextBody {
+  text: string;
+}
+
 // Define the expected structure for fetching tasks
 interface GetTasksQueryParams {
   userId: string;
@@ -39,6 +44,16 @@ export const progressService = {
   },
 
   /**
+   * Fetches all progress entries for a given challenge (scoped to the authenticated user).
+   * Corresponds to: GET /api/progress/challenge/:challengeId
+   * @param challengeId - The current challenge ID
+   * @returns A promise that resolves to { items: DailyProgress[], count: number }
+   */
+  async getAllProgressForChallenge(challengeId: string) {
+    return apiClient.get(`/progress/challenge/${challengeId}`);
+  },
+
+  /**
    * Updates the completion status of a specific task within a daily progress entry.
    * Corresponds to: PATCH /api/progress/:progressId/tasks/:taskId
    * * @param progressId - The ID of the DailyProgress document.
@@ -50,6 +65,42 @@ export const progressService = {
     const body: TaskUpdateBody = { completed };
     // This function remains correct as the apiClient's patch method accepts two arguments (endpoint, data)
     return apiClient.patch(`/progress/${progressId}/tasks/${taskId}`, body);
+  },
+
+  /**
+   * Adds a new task to a daily progress entry (Custom difficulty only).
+   * Corresponds to: POST /api/progress/:progressId/tasks
+   * @param progressId - The ID of the DailyProgress document.
+   * @param text - The text content of the new task.
+   * @returns A promise that resolves to the updated daily progress entry.
+   */
+  async addTask(progressId: string, text: string) {
+    const body: TaskTextBody = { text };
+    return apiClient.post(`/progress/${progressId}/tasks`, body);
+  },
+
+  /**
+   * Updates the text of a specific task (Custom difficulty only).
+   * Corresponds to: PATCH /api/progress/:progressId/tasks/:taskId/text
+   * @param progressId - The ID of the DailyProgress document.
+   * @param taskId - The ID of the task to update.
+   * @param text - The new text content.
+   * @returns A promise that resolves to the updated daily progress entry.
+   */
+  async updateTaskText(progressId: string, taskId: string, text: string) {
+    const body: TaskTextBody = { text };
+    return apiClient.patch(`/progress/${progressId}/tasks/${taskId}/text`, body);
+  },
+
+  /**
+   * Deletes a task from a daily progress entry (Custom difficulty only).
+   * Corresponds to: DELETE /api/progress/:progressId/tasks/:taskId
+   * @param progressId - The ID of the DailyProgress document.
+   * @param taskId - The ID of the task to delete.
+   * @returns A promise that resolves to the updated daily progress entry.
+   */
+  async deleteTask(progressId: string, taskId: string) {
+    return apiClient.delete(`/progress/${progressId}/tasks/${taskId}`);
   }
 };
 

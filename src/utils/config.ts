@@ -2,7 +2,7 @@
 export const API_URL: string = (() => {
   // 1) Try common CRA-style env var (will be inlined at build time)
   try {
-    const fromProc = (process as any)?.env?.REACT_APP_API_URL;
+    const fromProc = (import.meta as any)?.env?.REACT_APP_API_URL;
     if (fromProc) return fromProc;
   } catch (e) {
     // ignore

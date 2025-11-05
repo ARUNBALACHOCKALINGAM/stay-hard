@@ -9,7 +9,7 @@ class AuthService {
    */
   async verifyUser(firebaseUser: FirebaseUser): Promise<User> {
     try {
-      const idToken = await firebaseUser.getIdToken();
+      const idToken = await firebaseUser.getIdToken(true)
 
       const response = await fetch(`${API_URL}/auth/verify`, {
         method: 'POST',
@@ -45,6 +45,7 @@ class AuthService {
       photoUrl: firebaseUser.photoURL || '',
       firebaseUid: firebaseUser.uid,
       emailVerified: firebaseUser.emailVerified,
+      currentChallengeId: 'undefined',
       lastLogin: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
