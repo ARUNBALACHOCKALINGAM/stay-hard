@@ -42,7 +42,7 @@ export default function App() {
     handleTaskAdd,
     handleTaskDelete,
     handleTaskEdit,
-    handlePhotoUpload,
+    handlePhotoUploadFile,
     handlePhotoDelete,
   } = useAppState(user);
 
@@ -108,7 +108,7 @@ export default function App() {
         {/* Content */}
         {activeTab === 'tasks' ? (
           <>
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Settings Panel */}
               <Settings
                 days={state.days}
@@ -140,11 +140,14 @@ export default function App() {
           </>
         ) : (
           /* Photo Gallery */
-          <PhotoGallery
-            photos={state.photos}
-            onPhotoUpload={handlePhotoUpload}
-            onPhotoDelete={handlePhotoDelete}
-          />
+          <>
+            {console.log('Rendering PhotoGallery, state.photos:', state.photos)}
+            <PhotoGallery
+              photos={state.photos}
+              onPhotoUpload={handlePhotoUploadFile}
+              onPhotoDelete={handlePhotoDelete}
+            />
+          </>
         )}
       </div>
     </div>

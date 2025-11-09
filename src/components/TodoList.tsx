@@ -55,7 +55,7 @@ export const TodoList: React.FC<{
   const completedCount = displayedTasks.filter((t: Task) => t.completed).length;
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
       {/* Date Selector */}
       <DateSelector
         currentDate={selectedDate}
@@ -66,11 +66,11 @@ export const TodoList: React.FC<{
       />
 
       {/* Tasks List Header */}
-      <div className="flex justify-between items-center mb-4 mt-6">
-        <h2 className="text-xl font-semibold text-gray-900">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-4 mt-6">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
           {isViewingPastDay ? 'Past Progress' : isViewingToday ? "Today's Tasks" : 'Tasks'}
         </h2>
-        <span className="text-sm text-gray-600">
+        <span className="text-xs sm:text-sm text-gray-600">
           {completedCount} / {displayedTasks.length} completed
         </span>
       </div>
@@ -79,7 +79,7 @@ export const TodoList: React.FC<{
         {displayedTasks.map((task: Task) => (
           <div
             key={task.id}
-            className="flex items-center gap-3 p-3 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors"
           >
             {editingId === task.id ? (
               <>
@@ -120,7 +120,7 @@ export const TodoList: React.FC<{
                   {task.completed && <Check size={16} className="text-white" />}
                 </button>
                 <span 
-                  className={`flex-1 ${isViewingPastDay ? 'cursor-default' : 'cursor-pointer'} ${task.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}
+                  className={`flex-1 text-sm sm:text-base ${isViewingPastDay ? 'cursor-default' : 'cursor-pointer'} ${task.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}
                   onDoubleClick={canCustomize && isViewingToday ? () => handleEdit(task) : undefined}
                   title={canCustomize && isViewingToday ? "Double-click to edit" : ""}
                 >
@@ -129,9 +129,9 @@ export const TodoList: React.FC<{
                 {canCustomize && isViewingToday && (
                   <button
                     onClick={() => onTaskDelete(task.id)}
-                    className="text-red-500 hover:text-red-700 transition-colors"
+                    className="text-red-500 hover:text-red-700 transition-colors p-1"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
                   </button>
                 )}
               </>
@@ -148,14 +148,15 @@ export const TodoList: React.FC<{
             onChange={(e) => setNewTask(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
             placeholder="Add a new task..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-600"
+            className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-600 text-sm sm:text-base"
           />
           <button
             onClick={handleAdd}
-            className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors flex items-center gap-1 sm:gap-2 text-sm sm:text-base"
           >
-            <Plus size={20} />
-            Add
+            <Plus size={18} className="sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">Add</span>
+            <span className="sm:hidden">+</span>
           </button>
         </div>
       )}

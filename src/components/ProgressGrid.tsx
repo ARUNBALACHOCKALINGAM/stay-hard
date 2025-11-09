@@ -47,16 +47,16 @@ export const ProgressGrid: React.FC<{
   const cols = days === 21 ? 7 : days === 45 ? 9 : days === 60 ? 10 : 15;
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mt-6">
-      <h2 className="text-xl font-semibold mb-4 text-gray-900">Progress Overview</h2>
+    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mt-6">
+      <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-900">Progress Overview</h2>
       <div 
-        className="grid gap-2"
+        className="grid gap-1.5 sm:gap-2"
         style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
       >
         {gridData.map(({ date, completionRate, dayNumber, isToday, isFuture }) => (
           <div
             key={date}
-            className={`aspect-square rounded-md transition-all flex items-center justify-center font-semibold text-sm ${
+            className={`aspect-square rounded-md transition-all flex items-center justify-center font-semibold text-xs sm:text-sm ${
               isFuture
                 ? 'bg-gray-200 text-gray-500'
                 : getCompletionColor(completionRate) + ' text-white'
@@ -67,21 +67,21 @@ export const ProgressGrid: React.FC<{
           </div>
         ))}
       </div>
-      <div className="mt-4 flex items-center gap-4 text-sm text-gray-600">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-600 rounded"></div>
+      <div className="mt-4 flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-600 rounded"></div>
           <span>All done</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-orange-500 rounded"></div>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 bg-orange-500 rounded"></div>
           <span>Partial</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-red-500 rounded"></div>
-          <span>None</span>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded"></div>
+          <span>Incomplete</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-gray-200 rounded"></div>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-200 rounded"></div>
           <span>Future</span>
         </div>
       </div>

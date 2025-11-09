@@ -1,6 +1,6 @@
 // components/TabNavigation.tsx
 import React from 'react';
-import { Camera, List } from 'lucide-react';
+import { Camera, BookOpen } from 'lucide-react';
 
 interface TabNavigationProps {
   activeTab: 'tasks' | 'photos';
@@ -11,34 +11,53 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
   activeTab, 
   onTabChange 
 }) => {
-  const tabs = [
-    { id: 'tasks' as const, label: 'Tasks', icon: List },
-    { id: 'photos' as const, label: 'Photos', icon: Camera },
-  ];
+  const handleToggle = () => {
+    onTabChange(activeTab === 'tasks' ? 'photos' : 'tasks');
+  };
+
+  const isTasksView = activeTab === 'tasks';
 
   return (
-    <nav className="flex justify-center mb-6" aria-label="Main navigation">
-      <div className="bg-white rounded-lg shadow-md p-1 flex gap-1">
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => onTabChange(id)}
-            className={`
-              px-4 sm:px-6 py-2 rounded-md font-medium transition-colors 
-              flex items-center gap-2
-              ${activeTab === id
-                ? 'bg-amber-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
-              }
-            `}
-            aria-label={`Switch to ${label} tab`}
-            aria-current={activeTab === id ? 'page' : undefined}
-          >
-            <Icon size={20} />
-            <span className="hidden sm:inline">{label}</span>
-          </button>
-        ))}
-      </div>
+    <nav className="justify-center flex mb-6" aria-label="Main navigation">
+      <button
+        onClick={handleToggle}
+        className="group relative bg-gradient-to-r from-amber-500 to-orange-500 
+                   text-white rounded-full p-4 shadow-lg hover:shadow-xl 
+                   transition-all duration-300 hover:scale-105 active:scale-95"
+        aria-label={`Switch to ${isTasksView ? 'Photos' : 'Tasks'} view`}
+        title={`Switch to ${isTasksView ? 'Photos' : 'Tasks'}`}
+      >
+        {/* Icon Container with Animation */}
+        <div className="relative w-8 h-8 flex items-center justify-center">
+          {/* Tasks Icon (BookOpen) */}
+          <BookOpen
+            size={24}
+            className={`absolute transition-all duration-500 transform ${
+              !isTasksView
+                ? 'opacity-100 rotate-0 scale-100'
+                : 'opacity-0 -rotate-180 scale-50'
+            }`}
+          />
+          
+          {/* Photos Icon (Camera) */}
+          <Camera
+            size={24}
+            className={`absolute transition-all duration-500 transform ${
+              isTasksView
+                ? 'opacity-100 rotate-0 scale-100'
+                : 'opacity-0 rotate-180 scale-50'
+            }`}
+          />
+        </div>
+
+        {/* Tooltip on Hover */}
+        <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 
+                         bg-gray-900 text-white text-sm px-3 py-1.5 rounded-md 
+                         opacity-0 group-hover:opacity-100 transition-opacity duration-200
+                         whitespace-nowrap pointer-events-none">
+          {isTasksView ? 'View Photos' : 'View Tasks'}
+        </span>
+      </button>
     </nav>
   );
 };

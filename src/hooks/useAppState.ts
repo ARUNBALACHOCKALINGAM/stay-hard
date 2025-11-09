@@ -10,6 +10,8 @@ import type { ProgressPhoto } from '../types/progressphoto';
 import { getDefaultTasks, getTodayDate } from '../utils/utils';
 import { challengeService } from '../services/challengeService';
 import progressService from '../services/progressService';
+import galleryService from '../services/galleryService';
+import type { BackendPhotoMeta } from '../services/galleryService';
 
 
 // Constants
@@ -536,24 +538,134 @@ export function useAppState(user: User | null) {
 
   // --- Handlers: Photo Management ---
 
-  const handlePhotoUpload = useCallback((dataUrl: string) => {
-    const newPhoto: ProgressPhoto = {
-      id: `photo-${Date.now()}`,
-      date: getTodayDate(),
-      dataUrl
-    };
-    setState(prev => ({
-      ...prev,
-      photos: [...prev.photos, newPhoto]
-    }));
-  }, []);
+  const handlePhotoUploadFile = useCallback(async (file: File) => {
+    if (!appUser?._id || !challengeId) {
+      console.error('Cannot upload photo: missing user or challenge');
+      return;
+    }
 
-  const handlePhotoDelete = useCallback((id: string) => {
-    setState(prev => ({
-      ...prev,
-      photos: prev.photos.filter(p => p.id !== id)
-    }));
-  }, []);
+    const date = getTodayDate();
+    const tempUrl = URL.createObjectURL(file);
+    const tempId = `temp-photo-${Date.now()}`;
+
+    // 1) Optimistic add with temporary object URL
+    const tempPhoto: ProgressPhoto = {
+      id: tempId,
+      date,
+      dataUrl: tempUrl,
+      uploading: true
+    };
+    setState(prev => ({ ...prev, photos: [tempPhoto, ...prev.photos] }));
+
+    try {
+      // 2) API upload
+      const uploaded = await galleryService.uploadProgressPhoto(file, appUser._id, challengeId, date);
+      console.log('Upload response received:', uploaded);
+      const backendId: string = uploaded?.file?.id; // Backend returns { file: { id, metadata, ... } }
+
+      if (!backendId) {
+        console.error('Upload response missing ID:', uploaded);
+        throw new Error('No photo ID returned from server');
+      }
+
+      console.log('Streaming uploaded photo:', backendId);
+      // 3) Stream from server (auth required) to get a persistent object URL
+      const serverUrl = await galleryService.streamPhoto(backendId);
+      console.log('Photo streamed successfully, URL:', serverUrl);
+
+      // Get date from metadata
+      const uploadDate = uploaded?.file?.metadata?.date || date;
+      const uploadTimestamp = new Date().toISOString(); // Capture upload timestamp
+
+      // Replace temp with server-backed photo
+      const newPhoto = { 
+        id: backendId, 
+        backendId, 
+        date: uploadDate, 
+        dataUrl: serverUrl, 
+        uploading: false,
+        uploadDate: uploadTimestamp 
+      };
+      console.log('Replacing temp photo with:', newPhoto);
+      setState(prev => ({
+        ...prev,
+        photos: prev.photos.map(p =>
+          p.id === tempId
+            ? newPhoto
+            : p
+        )
+      }));
+
+      // Revoke the temporary object URL
+      URL.revokeObjectURL(tempUrl);
+      console.log('Upload complete, temp URL revoked');
+    } catch (err) {
+      console.error('Photo upload failed', err);
+      // Rollback: remove the temp photo and revoke URL
+      setState(prev => ({ ...prev, photos: prev.photos.filter(p => p.id !== tempId) }));
+      URL.revokeObjectURL(tempUrl);
+    }
+  }, [appUser?._id, challengeId]);
+
+  const handlePhotoDelete = useCallback(async (id: string) => {
+    // Find the photo to get its backend ID and object URL
+    const photo = state.photos.find(p => p.id === id);
+    if (!photo) return;
+
+    // 1. Optimistic removal from UI
+    setState(prev => ({ ...prev, photos: prev.photos.filter(p => p.id !== id) }));
+
+    try {
+      // 2. API delete (only if it has a backend ID)
+      if (photo.backendId) {
+        await galleryService.deletePhoto(photo.backendId);
+        console.log('Photo deleted from server:', photo.backendId);
+      }
+
+      // 3. Revoke object URL to free memory
+      if (photo.dataUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(photo.dataUrl);
+      }
+    } catch (err) {
+      console.error('Failed to delete photo from server:', err);
+      // Rollback: restore the photo
+      setState(prev => ({ ...prev, photos: [...prev.photos, photo].sort((a, b) => b.date.localeCompare(a.date)) }));
+    }
+  }, [state.photos]);
+
+  // Initial load of gallery photos for the current challenge
+  useEffect(() => {
+    (async () => {
+      if (!appUser?._id) return;
+      console.log('Loading photos for user:', appUser._id, 'challenge:', challengeId);
+      try {
+        const metas = await galleryService.getProgressPhotos({ userId: appUser._id, challengeId: challengeId || undefined });
+        console.log('Photo metas fetched:', metas.length, metas);
+        // Stream each photo to get an object URL
+        const photos: ProgressPhoto[] = await Promise.all(
+          (metas as BackendPhotoMeta[])
+            .filter(m => m.id) // Backend uses 'id' not '_id'
+            .map(async (m) => {
+              console.log('Streaming photo:', m.id);
+              const url = await galleryService.streamPhoto(m.id);
+              return { 
+                id: m.id, 
+                backendId: m.id, 
+                date: m.metadata.date, // Date is in metadata
+                dataUrl: url,
+                uploadDate: m.uploadDate // ISO timestamp from server
+              };
+            })
+        );
+        console.log('Photos loaded and streamed:', photos.length);
+        // Sort by date desc for display
+        photos.sort((a, b) => b.date.localeCompare(a.date));
+        setState(prev => ({ ...prev, photos }));
+      } catch (e) {
+        console.error('Failed to load progress photos', e);
+      }
+    })();
+  }, [appUser?._id, challengeId]);
 
 
 
@@ -654,7 +766,7 @@ export function useAppState(user: User | null) {
     handleTaskAdd,
     handleTaskDelete,
     handleTaskEdit,
-    handlePhotoUpload,
+    handlePhotoUploadFile,
     handlePhotoDelete,
   };
 }
