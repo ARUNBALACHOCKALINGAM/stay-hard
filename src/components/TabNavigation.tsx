@@ -1,6 +1,6 @@
 // components/TabNavigation.tsx
 import React from 'react';
-import { Camera, BookOpen } from 'lucide-react';
+import { Camera, Dumbbell } from 'lucide-react';
 
 interface TabNavigationProps {
   activeTab: 'tasks' | 'photos';
@@ -30,7 +30,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
         {/* Icon Container with Animation */}
         <div className="relative w-8 h-8 flex items-center justify-center">
           {/* Tasks Icon (BookOpen) */}
-          <BookOpen
+          <Dumbbell
             size={24}
             className={`absolute transition-all duration-500 transform ${
               !isTasksView

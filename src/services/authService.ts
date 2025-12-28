@@ -113,32 +113,62 @@ class AuthService {
   }
 
   /**
-   * Update user profile
+   * Local user signup
    */
-  async updateUserProfile(
-    userId: string, 
-    idToken: string, 
-    updates: Partial<User>
-  ): Promise<User> {
+  async signupLocal(name: string, email: string, password: string): Promise<User> {
     try {
-      const response = await fetch(`${API_URL}/users/${userId}`, {
-        method: 'PATCH',
+      const response = await fetch(`${API_URL}/auth/signup`, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updates),
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update user profile');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to sign up');
       }
 
       const data = await response.json();
       return data.user;
       
     } catch (error) {
-      console.error('Error updating user profile:', error);
+      console.error('Error signing up:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Local user signin
+   */
+  async signinLocal(email: string, password: string): Promise<User> {
+    try {
+      const response = await fetch(`${API_URL}/auth/signin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to sign in');
+      }
+
+      const data = await response.json();
+      return data.user;
+      
+    } catch (error) {
+      console.error('Error signing in:', error);
       throw error;
     }
   }

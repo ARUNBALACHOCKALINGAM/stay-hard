@@ -12,6 +12,20 @@ export const Settings: React.FC<{
   const dayOptions: (21 | 45 | 60 | 75)[] = [21, 45, 60, 75];
   const levelOptions: ('Soft' | 'Hard' | 'Custom')[] = ['Soft', 'Hard', 'Custom'];
 
+  // Motivational quotes
+  const motivationalQuotes = [
+    "The only way to do great work is to love what you do. - Steve Jobs",
+    "Believe you can and you're halfway there. - Theodore Roosevelt",
+    "The future belongs to those who believe in the beauty of their dreams. - Eleanor Roosevelt",
+    "You miss 100% of the shots you don't take. - Wayne Gretzky",
+    "The best way to predict the future is to create it. - Peter Drucker",
+    "Don't watch the clock; do what it does. Keep going. - Sam Levenson",
+    "The only limit to our realization of tomorrow will be our doubts of today. - Franklin D. Roosevelt",
+    "Success is not final, failure is not fatal: It is the courage to continue that counts. - Winston Churchill"
+  ];
+
+  const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+
   const handleResetClick = () => {
     onResetProgress?.();
   };
@@ -107,6 +121,41 @@ export const Settings: React.FC<{
                 Reset Progress
               </button>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Motivational Content */}
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 sm:p-6 border border-amber-100">
+        {isExpanded ? (
+          // Motivational Quote when expanded
+          <div className="text-center">
+            <div className="mb-3">
+              <span className="text-2xl">💪</span>
+            </div>
+            <blockquote className="text-gray-700 italic text-sm sm:text-base leading-relaxed">
+              "{randomQuote}"
+            </blockquote>
+            <div className="mt-3 text-xs text-gray-500">
+              Stay motivated • Keep pushing
+            </div>
+          </div>
+        ) : (
+          // Motivational Video when collapsed
+          <div className="text-center">
+            <h4 className="text-sm font-semibold text-gray-800 mb-3">Daily Motivation</h4>
+            <div className="aspect-video rounded-lg overflow-hidden shadow-md">
+              <iframe
+                src="https://www.youtube.com/embed/8Sm0A1IQZNY"
+                title="Motivational Video"
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+            <p className="text-xs text-gray-600 mt-2">
+              Watch this short video to boost your motivation
+            </p>
           </div>
         )}
       </div>

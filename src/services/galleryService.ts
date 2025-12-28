@@ -87,6 +87,24 @@ export const galleryService = {
     return [];
   },
 
+  async getChallengePhotos(challengeId: string): Promise<BackendPhotoMeta[]> {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const res = await fetch(`${API_URL}/gallery/challenge/${challengeId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!res.ok) throw new Error('Failed to fetch challenge photos');
+    const data = await res.json();
+    console.log('getChallengePhotos response:', data); // Debug logging
+    // Expect shape: { photos: BackendPhotoMeta[] } or array directly
+    if (Array.isArray(data)) return data as BackendPhotoMeta[];
+    if (Array.isArray(data?.photos)) return data.photos as BackendPhotoMeta[];
+    console.warn('Unexpected response structure:', data);
+    return [];
+  },
+
   async streamPhoto(photoId: string): Promise<string> {
     const token = await auth.currentUser?.getIdToken();
     if (!token) throw new Error('Not authenticated');

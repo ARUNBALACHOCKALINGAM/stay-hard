@@ -11,6 +11,7 @@ import { getDefaultTasks, getTodayDate } from '../utils/utils';
 import { challengeService } from '../services/challengeService';
 import progressService from '../services/progressService';
 import galleryService from '../services/galleryService';
+// import { API_URL } from '../utils/config';
 import type { BackendPhotoMeta } from '../services/galleryService';
 
 
@@ -26,10 +27,13 @@ const INITIAL_STATE: AppState = {
 /**
  * Custom hook to manage the core challenge state and all its modification handlers.
  * @param user The authenticated user object, used for triggering initial load/sync.
+ * @param updateUser Function to update the user object (e.g., for new challenge ID).
  */
-export function useAppState(user: User | null) {
+export function useAppState(user: User | null, updateUser?: (newChallengeId: string) => void) {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
   const [activeTab, setActiveTab] = useState<'tasks' | 'photos'>('tasks');
+  const [history, setHistory] = useState<any[]>([]);
+  const [selectedChallengeId, setSelectedChallengeId] = useState<string>('');
 
   // Derived State (Can be calculated directly inside the hook)
   const today = getTodayDate();
@@ -45,6 +49,10 @@ export function useAppState(user: User | null) {
   const loadAllProgressForChallenge = useCallback(async () => {
     if (!challengeId) return;
     try {
+      // First, fetch challenge details to get the correct days
+      const challenge = await challengeService.getChallenge(challengeId);
+      setState(prev => ({ ...prev, days: challenge.challengeDays }));
+
       const res = await progressService.getAllProgressForChallenge(challengeId);
       const items = Array.isArray(res?.items) ? res.items : [];
 
@@ -90,7 +98,7 @@ export function useAppState(user: User | null) {
         },
       }));
     } catch (error) {
-      console.error('Failed to load all progress for challenge:', error);
+      console.error('Failed to load challenge details and progress:', error);
     }
   }, [challengeId]);
 
@@ -673,63 +681,146 @@ export function useAppState(user: User | null) {
 
   // --- Handlers: Settings & State Reset (Now with API Calls) ---
 
-  const handleDaysChange = useCallback(async (days: 21 | 45 | 60 | 75) => {
+  const handleDaysChange = useCallback(async (days: 21 | 45 | 60 | 75, resetProgress: boolean = false) => {
     if (!challengeId) return console.error('No challenge ID available for update');
 
-    // 1. Optimistic UI Update (keep existing startDate, don't reset it)
-    setState(prev => ({
-      ...prev,
-      days
-    }));
-
-    try {
-      // 2. Immediate API Write
-      await challengeService.updateDays(challengeId, days);
-    } catch (error) {
-      console.error('Failed to update challenge days on server:', error);
-      // Optional: Rollback UI state or show error notification
-    }
-  }, [challengeId]);
-
-
-  const handleLevelChange = useCallback(async (level: 'Soft' | 'Hard' | 'Custom') => {
-    if (!challengeId) return console.error('No challenge ID available for update');
-
-    // Get the tasks that will be sent to the API if level is Custom
-    const tasksToSend = level === 'Custom'
-      ? state.dailyProgress[getTodayDate()]?.tasks
-      : undefined;
-
-    // 1. Optimistic UI Update
-    const today = getTodayDate();
-    const newTasks = level === 'Custom'
-      ? tasksToSend || getDefaultTasks('Soft')
-      : getDefaultTasks(level);
-
-    setState(prev => ({
-      ...prev,
-      level,
-      dailyProgress: {
-        ...prev.dailyProgress,
-        [today]: {
-          date: today,
-          completionRate: newTasks.filter(t => t.completed).length / (newTasks.length || 1),
-          tasks: newTasks
+    if (resetProgress) {
+      // Create a new challenge
+      try {
+        const newChallenge = await challengeService.createChallenge(days, state.level);
+        const newChallengeId = newChallenge.challenge.challengeId; // Based on the API response
+        if (updateUser) {
+          updateUser(newChallengeId);
         }
+        // State is already reset and progress loaded by the API
+        setState({ ...INITIAL_STATE, days });
+        await loadAllProgressForChallenge();
+      } catch (error) {
+        console.error('Failed to create new challenge:', error);
       }
-    }));
+    } else {
+      // Just update days without resetting
+      setState(prev => ({
+        ...prev,
+        days
+      }));
 
-    try {
-      // 2. Immediate API Write
-      // Pass the current tasks if setting to 'Custom'
-      await challengeService.updateDifficulty(challengeId, level, tasksToSend);
-      // 3. Refresh all progress to sync UI (grid + today)
-      await loadAllProgressForChallenge();
-    } catch (error) {
-      console.error('Failed to update challenge difficulty on server:', error);
-      // Optional: Rollback UI state or show error notification
+      try {
+        await challengeService.updateDays(challengeId, days);
+      } catch (error) {
+        console.error('Failed to update challenge days on server:', error);
+      }
     }
-  }, [challengeId, state.dailyProgress, loadAllProgressForChallenge, today]);
+  }, [challengeId, loadAllProgressForChallenge, updateUser]);
+
+
+  const handleLevelChange = useCallback(async (level: 'Soft' | 'Hard' | 'Custom', resetProgress: boolean = false) => {
+    if (!challengeId) return console.error('No challenge ID available for update');
+
+    if (resetProgress) {
+      // Create a new challenge with new level
+      try {
+        const newChallenge = await challengeService.createChallenge(state.days, level);
+        const newChallengeId = newChallenge.challenge.challengeId;
+        if (updateUser) {
+          updateUser(newChallengeId);
+        }
+        // State is already reset and progress loaded by the API
+        setState({ ...INITIAL_STATE, days: state.days, level });
+        await loadAllProgressForChallenge();
+      } catch (error) {
+        console.error('Failed to create new challenge:', error);
+      }
+    } else {
+      // Update difficulty of existing challenge
+      // Get the tasks that will be sent to the API if level is Custom
+      const tasksToSend = level === 'Custom'
+        ? state.dailyProgress[getTodayDate()]?.tasks
+        : undefined;
+
+      // 1. Optimistic UI Update
+      const today = getTodayDate();
+      const newTasks = level === 'Custom'
+        ? tasksToSend || getDefaultTasks('Soft')
+        : getDefaultTasks(level);
+
+      setState(prev => ({
+        ...prev,
+        level,
+        dailyProgress: {
+          ...prev.dailyProgress,
+          [today]: {
+            date: today,
+            completionRate: newTasks.filter(t => t.completed).length / (newTasks.length || 1),
+            tasks: newTasks
+          }
+        }
+      }));
+
+      try {
+        // 2. Immediate API Write
+        // Pass the current tasks if setting to 'Custom'
+        await challengeService.updateDifficulty(challengeId, level, tasksToSend);
+        // 3. Refresh all progress to sync UI (grid + today)
+        await loadAllProgressForChallenge();
+      } catch (error) {
+        console.error('Failed to update challenge difficulty on server:', error);
+        // Optional: Rollback UI state or show error notification
+      }
+    }
+  }, [challengeId, state.days, state.dailyProgress, loadAllProgressForChallenge, updateUser]);
+
+  // Load history of inactive challenges
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await challengeService.getHistory();
+      setHistory(res.challenges || []);
+    } catch (error) {
+      console.error('Failed to load challenge history:', error);
+    }
+  }, []);
+
+  // Load photos for a specific challenge
+  const loadPhotos = useCallback(async (challengeId: string) => {
+    if (!challengeId) return;
+    try {
+      const photos = await galleryService.getChallengePhotos(challengeId);
+      // Stream each photo to get authenticated blob URLs
+      const mappedPhotos = await Promise.all(
+        photos.map(async (photo) => {
+          const url = await galleryService.streamPhoto(photo.id);
+          return { 
+            id: photo.id, 
+            date: photo.metadata.date, 
+            dataUrl: url,
+            uploadDate: photo.uploadDate 
+          };
+        })
+      );
+      setState(prev => ({ ...prev, photos: mappedPhotos }));
+    } catch (error) {
+      console.error('Failed to load photos:', error);
+      // Clear photos on error (e.g., no photos for challenge)
+      setState(prev => ({ ...prev, photos: [] }));
+    }
+  }, []);
+
+  // Load history when user changes
+  useEffect(() => {
+    if (user) {
+      loadHistory();
+      if (challengeId) {
+        setSelectedChallengeId(challengeId);
+      }
+    }
+  }, [user, loadHistory, challengeId]);
+
+  // Load photos when selectedChallengeId changes
+  useEffect(() => {
+    if (selectedChallengeId) {
+      loadPhotos(selectedChallengeId);
+    }
+  }, [selectedChallengeId, loadPhotos]);
 
 
   const handleResetProgress = useCallback(async () => {
@@ -756,8 +847,11 @@ export function useAppState(user: User | null) {
     state,
     activeTab,
     todayTasks,
+    history,
+    selectedChallengeId,
     // Setters
     setActiveTab,
+    setSelectedChallengeId,
     // Handlers
     handleDaysChange,
     handleLevelChange,
