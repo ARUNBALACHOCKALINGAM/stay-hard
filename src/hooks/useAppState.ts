@@ -102,7 +102,77 @@ export function useAppState(user: User | null, updateUser?: (newChallengeId: str
     }
   }, [challengeId]);
 
+  // If user exists but has no currentChallengeId, fetch the canonical current challenge
+  useEffect(() => {
+    if (!user) return;
+    if (challengeId) return; // already have one
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await challengeService.getCurrentChallenge();
+        if (cancelled) return;
+        const ch = res?.challenge || res;
+        const fetchedId = ch?.challengeId || ch?.challengeId || ch?._id || ch?.id;
+        if (!fetchedId) return;
+        if (updateUser) updateUser(fetchedId);
+
+        // populate local state from returned challenge and load its progress
+        const days = ch?.challengeDays || state.days;
+        const startDate = ch?.startDate || state.startDate || getTodayDate();
+        setState(prev => ({ ...prev, days, startDate }));
+
+        try {
+          const res2 = await progressService.getAllProgressForChallenge(fetchedId);
+          const items = Array.isArray(res2?.items) ? res2.items : [];
+          const progressMap: Record<string, any> = {};
+          let earliestDate = '';
+          items.forEach((p: any) => {
+            const tasksFromServer: Task[] = Array.isArray(p.tasks)
+              ? p.tasks.map((t: any) => ({
+                  id: t.id,
+                  text: t.text,
+                  completed: Boolean(t.completed),
+                  ...(t.completedAt ? { completedAt: new Date(t.completedAt) } : {}),
+                }))
+              : [];
+            const completionRate = tasksFromServer.length
+              ? tasksFromServer.filter(t => t.completed).length / tasksFromServer.length
+              : 0;
+            progressMap[p.date] = {
+              date: p.date,
+              completionRate: typeof p.completionRate === 'number' ? p.completionRate : completionRate,
+              tasks: tasksFromServer,
+              progressId: p._id,
+              dayNumber: p.dayNumber,
+            };
+            if (!earliestDate || p.date < earliestDate) earliestDate = p.date;
+          });
+          setState(prev => ({
+            ...prev,
+            startDate: earliestDate || startDate,
+            dailyProgress: {
+              ...prev.dailyProgress,
+              ...progressMap,
+            },
+          }));
+        } catch (e) {
+          console.error('Failed to load progress for fetched current challenge:', e);
+        }
+      } catch (e) {
+        console.error('Failed to fetch current challenge:', e);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [user, challengeId, updateUser, state.days, state.startDate]);
+
   const initializeDailyProgress = useCallback(async (date: string) => {
+    if (!appUser?._id || !challengeId) {
+      console.warn('initializeDailyProgress: missing userId or challengeId, skipping init', { userId: appUser?._id, challengeId });
+      return;
+    }
     const tasks = getDefaultTasks(state.level);
     setState(prev => ({
       ...prev,
@@ -140,8 +210,8 @@ export function useAppState(user: User | null, updateUser?: (newChallengeId: str
               date,
               completionRate,
               tasks: tasksFromServer,
-              progressId: progressData._id, // Store the server-side document ID
-              dayNumber: progressData.dayNumber // Include day number from server
+              progressId: progressData?._id, // Store the server-side document ID
+              dayNumber: progressData?.dayNumber // Include day number from server
             }
           }
         }));
@@ -155,12 +225,13 @@ export function useAppState(user: User | null, updateUser?: (newChallengeId: str
 
   // Initialize Daily Progress Effect (Moved from App.tsx)
   useEffect(() => {
-    if (!user) return;
+    // Wait until we have a logged-in user and a challengeId available
+    if (!user || !appUser?._id || !challengeId) return;
     if (!state.dailyProgress[today]) {
       initializeDailyProgress(today);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, state.level]); // Removed initializeDailyProgress as dependency for simplicity since state.level is already a dependency
+  }, [user, state.level, challengeId]); // Re-run when challengeId becomes available
 
   // Fetch entire challenge progress when user/challenge changes (for ProgressGrid and history)
   useEffect(() => {

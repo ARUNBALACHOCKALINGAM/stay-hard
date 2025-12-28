@@ -20,6 +20,11 @@ export const challengeService = {
     return apiClient.get(`/challenges/${challengeId}`);
   },
 
+  // Get or create current challenge for the authenticated user
+  async getCurrentChallenge() {
+    return apiClient.get('/challenges/current');
+  },
+
   // Get history of inactive challenges
   async getHistory() {
     return apiClient.get('/challenges/history');
