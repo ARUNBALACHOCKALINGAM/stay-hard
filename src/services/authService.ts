@@ -1,7 +1,7 @@
 // services/authService.ts
 import type { User as FirebaseUser } from 'firebase/auth';
 import type { User } from '../types/user';
-import API_URL from '../utils/config';
+import { API_URL } from '../utils/config';
 
 class AuthService {
   /**
