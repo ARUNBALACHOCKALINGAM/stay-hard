@@ -14,7 +14,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
       {/* Title Section */}
       <div className="flex-1 min-w-0">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">
-          STAY <span className="underline decoration-amber-600 decoration-4 underline-offset-4">HARD</span>
+          STAY <span className="underline decoration-amber-600 italic decoration-4 underline-offset-4">HARD</span>
         </h1>
         <p className="hidden sm:block text-gray-600 mt-1 text-sm md:text-base">
           Mental Toughness Challenge Tracker
