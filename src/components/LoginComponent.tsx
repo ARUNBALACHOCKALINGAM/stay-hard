@@ -101,9 +101,11 @@ const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError('');
 
-    try {
-      const user = await authService.signupLocal(formData.name, formData.email, formData.password);
-      onLogin(user);
+      try {
+        const data = await authService.signupLocal(formData.name, formData.email, formData.password);
+        // Persist backend token and set user
+        if (data.token) localStorage.setItem('authToken', data.token);
+        onLogin(data.user);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to sign up');
     } finally {
@@ -116,9 +118,10 @@ const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError('');
 
-    try {
-      const user = await authService.signinLocal(formData.email, formData.password);
-      onLogin(user);
+      try {
+        const data = await authService.signinLocal(formData.email, formData.password);
+        if (data.token) localStorage.setItem('authToken', data.token);
+        onLogin(data.user);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to sign in');
     } finally {

@@ -142,7 +142,24 @@ export default function App() {
           const authenticatedUser = await authService.verifyUser(firebaseUser);
           setUser(authenticatedUser);
         } else {
-          setUser(null);
+          // No Firebase user — check for a locally stored backend token
+          const token = localStorage.getItem('authToken');
+          if (token) {
+            try {
+              const result = await authService.verifyLocalToken(token);
+              // If backend returned a refreshed token, store it
+              if (result.token) {
+                localStorage.setItem('authToken', result.token);
+              }
+              setUser(result.user);
+            } catch (err) {
+              console.warn('Local token invalid or expired, clearing session');
+              localStorage.removeItem('authToken');
+              setUser(null);
+            }
+          } else {
+            setUser(null);
+          }
         }
       } catch (error) {
         console.error('Authentication error:', error);

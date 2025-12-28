@@ -115,7 +115,7 @@ class AuthService {
   /**
    * Local user signup
    */
-  async signupLocal(name: string, email: string, password: string): Promise<User> {
+  async signupLocal(name: string, email: string, password: string): Promise<{ user: User; token: string }> {
     try {
       const response = await fetch(`${API_URL}/auth/signup`, {
         method: 'POST',
@@ -135,7 +135,8 @@ class AuthService {
       }
 
       const data = await response.json();
-      return data.user;
+      // Expect backend to return { user, token }
+      return { user: data.user, token: data.token };
       
     } catch (error) {
       console.error('Error signing up:', error);
@@ -146,7 +147,7 @@ class AuthService {
   /**
    * Local user signin
    */
-  async signinLocal(email: string, password: string): Promise<User> {
+  async signinLocal(email: string, password: string): Promise<{ user: User; token: string }> {
     try {
       const response = await fetch(`${API_URL}/auth/signin`, {
         method: 'POST',
@@ -165,10 +166,36 @@ class AuthService {
       }
 
       const data = await response.json();
-      return data.user;
+      // Expect backend to return { user, token }
+      return { user: data.user, token: data.token };
       
     } catch (error) {
       console.error('Error signing in:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verify a locally-stored token with backend and return refreshed user/token
+   */
+  async verifyLocalToken(token: string): Promise<{ user: User; token?: string }> {
+    try {
+      const response = await fetch(`${API_URL}/auth/verify`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Token verification failed');
+      }
+
+      const data = await response.json();
+      return { user: data.user, token: data.token };
+    } catch (error) {
+      console.error('Error verifying local token:', error);
       throw error;
     }
   }

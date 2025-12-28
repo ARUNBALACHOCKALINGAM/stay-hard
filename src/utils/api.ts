@@ -3,9 +3,18 @@ import { API_URL } from './config';
 
 export const apiClient = {
   async getAuthHeaders() {
-    const token = await auth.currentUser?.getIdToken();
+    // Prefer locally-stored backend JWT (from local signup/signin).
+    const localToken = typeof localStorage !== 'undefined' ? localStorage.getItem('authToken') : null;
+    if (localToken) {
+      return {
+        'Authorization': `Bearer ${localToken}`,
+        'Content-Type': 'application/json',
+      };
+    }
+
+    const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
     return {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${token ?? ''}`,
       'Content-Type': 'application/json',
     };
   },
