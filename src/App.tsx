@@ -40,10 +40,15 @@ export default function App() {
   const [showLevelChangeModal, setShowLevelChangeModal] = useState(false);
   const [pendingLevel, setPendingLevel] = useState<'Soft' | 'Hard' | 'Custom' | null>(null);
 
+  // Memoize updateUser callback to prevent infinite re-renders
+  const updateUserChallengeId = useCallback((newChallengeId: string) => {
+    setUser(prev => (prev ? { ...prev, currentChallengeId: newChallengeId } : null));
+  }, []);
+
   // ⭐️ Use the new modular hooks
   const { data, setData, loadAllProgressForChallenge, todayTasks, saveToCacheIfPossible } = useChallengeData(
     user,
-    (newChallengeId) => setUser(prev => (prev ? { ...prev, currentChallengeId: newChallengeId } : null))
+    updateUserChallengeId
   );
 
   const { handleTaskToggle, handleTaskAdd, handleTaskDelete, handleTaskEdit } = useTaskManagement({
@@ -56,6 +61,19 @@ export default function App() {
     user,
     user?.currentChallengeId
   );
+
+  // Memoize data update callbacks to prevent infinite re-renders
+  const updateDays = useCallback((days: 21 | 45 | 60 | 75) => {
+    setData(prev => ({ ...prev, days }));
+  }, []);
+
+  const updateLevel = useCallback((level: 'Soft' | 'Hard' | 'Custom') => {
+    setData(prev => ({ ...prev, level }));
+  }, []);
+
+  const updateProgress = useCallback((updater: (prev: Record<string, any>) => Record<string, any>) => {
+    setData(prev => ({ ...prev, dailyProgress: updater(prev.dailyProgress) }));
+  }, []);
 
   const {
     history,
@@ -71,10 +89,10 @@ export default function App() {
     data.level,
     data.days,
     data.dailyProgress,
-    (newChallengeId) => setUser(prev => (prev ? { ...prev, currentChallengeId: newChallengeId } : null)),
-    (days) => setData(prev => ({ ...prev, days })),
-    (level) => setData(prev => ({ ...prev, level })),
-    (updater) => setData(prev => ({ ...prev, dailyProgress: updater(prev.dailyProgress) })),
+    updateUserChallengeId,
+    updateDays,
+    updateLevel,
+    updateProgress,
     loadAllProgressForChallenge
   );
 

@@ -191,7 +191,8 @@ export function useChallengeData(
     return () => {
       cancelled = true;
     };
-  }, [user, challengeId, updateUser, data.days, data.startDate, appUser?._id, loadDailyProgress, saveToCacheIfPossible]);
+  }, [user, challengeId, updateUser, appUser?._id, loadDailyProgress, saveToCacheIfPossible]);
+  // Removed data.days and data.startDate from dependencies to prevent infinite loop
 
   // Initialize today's progress
   const initializeDailyProgress = useCallback(
