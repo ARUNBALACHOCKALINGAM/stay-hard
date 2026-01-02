@@ -6,6 +6,7 @@ export interface User {
   firebaseUid: string;
   currentChallengeId: string;
   emailVerified: boolean;
+  provider?: 'local' | 'google' | 'firebase';
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;

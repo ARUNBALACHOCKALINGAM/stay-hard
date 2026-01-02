@@ -6,9 +6,10 @@ import type { User } from '../types/user';
 interface HeaderProps {
   user: User;
   onLogout: () => void;
+  onProfileClick?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
+export const Header: React.FC<HeaderProps> = ({ user, onLogout, onProfileClick }) => {
   return (
     <header className="flex flex-row justify-between items-center gap-4 mb-6">
       {/* Title Section */}
@@ -24,7 +25,11 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
       {/* User Section */}
       <div className="flex items-center gap-2 sm:gap-4">
         {/* User Avatar - Mobile: just icon, Desktop: with details card */}
-        <div className="sm:flex items-center gap-3 sm:bg-white sm:px-4 sm:py-2 sm:rounded-lg sm:shadow-md">
+        <button
+          onClick={onProfileClick}
+          className="sm:flex items-center gap-3 sm:bg-white sm:px-4 sm:py-2 sm:rounded-lg sm:shadow-md hover:bg-gray-50 transition-colors"
+          title="View Profile"
+        >
           {user.photoUrl ? (
             <img
               src={user.photoUrl}
@@ -50,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
               {user.email}
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Logout Button - Mobile: icon only, Desktop: with background */}
         <button

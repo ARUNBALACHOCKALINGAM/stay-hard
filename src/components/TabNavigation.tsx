@@ -1,62 +1,70 @@
 // components/TabNavigation.tsx
 import React from 'react';
-import { Camera, Dumbbell } from 'lucide-react';
+import { Camera, Dumbbell, Trophy } from 'lucide-react';
 
 interface TabNavigationProps {
-  activeTab: 'tasks' | 'photos';
-  onTabChange: (tab: 'tasks' | 'photos') => void;
+  activeTab: 'tasks' | 'photos' | 'leaderboard';
+  onTabChange: (tab: 'tasks' | 'photos' | 'leaderboard') => void;
 }
 
 export const TabNavigation: React.FC<TabNavigationProps> = ({ 
   activeTab, 
   onTabChange 
 }) => {
-  const handleToggle = () => {
-    onTabChange(activeTab === 'tasks' ? 'photos' : 'tasks');
-  };
-
-  const isTasksView = activeTab === 'tasks';
-
   return (
-    <nav className="justify-center flex mb-6" aria-label="Main navigation">
+    <nav className="flex justify-center gap-2 mb-6" aria-label="Main navigation">
+      {/* Tasks Tab */}
       <button
-        onClick={handleToggle}
-        className="group relative bg-gradient-to-r from-amber-500 to-orange-500 
-                   text-white rounded-full p-4 shadow-lg hover:shadow-xl 
-                   transition-all duration-300 hover:scale-105 active:scale-95"
-        aria-label={`Switch to ${isTasksView ? 'Photos' : 'Tasks'} view`}
-        title={`Switch to ${isTasksView ? 'Photos' : 'Tasks'}`}
+        onClick={() => onTabChange('tasks')}
+        className={`
+          flex items-center gap-2 px-6 py-3 rounded-lg font-medium
+          transition-all duration-200 shadow-sm
+          ${activeTab === 'tasks'
+            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-105'
+            : 'bg-white text-gray-600 hover:bg-gray-50 hover:shadow'
+          }
+        `}
+        aria-label="View Tasks"
+        aria-current={activeTab === 'tasks' ? 'page' : undefined}
       >
-        {/* Icon Container with Animation */}
-        <div className="relative w-8 h-8 flex items-center justify-center">
-          {/* Tasks Icon (BookOpen) */}
-          <Dumbbell
-            size={24}
-            className={`absolute transition-all duration-500 transform ${
-              !isTasksView
-                ? 'opacity-100 rotate-0 scale-100'
-                : 'opacity-0 -rotate-180 scale-50'
-            }`}
-          />
-          
-          {/* Photos Icon (Camera) */}
-          <Camera
-            size={24}
-            className={`absolute transition-all duration-500 transform ${
-              isTasksView
-                ? 'opacity-100 rotate-0 scale-100'
-                : 'opacity-0 rotate-180 scale-50'
-            }`}
-          />
-        </div>
+        <Dumbbell size={20} />
+        <span className="hidden sm:inline">Tasks</span>
+      </button>
 
-        {/* Tooltip on Hover */}
-        <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 
-                         bg-gray-900 text-white text-sm px-3 py-1.5 rounded-md 
-                         opacity-0 group-hover:opacity-100 transition-opacity duration-200
-                         whitespace-nowrap pointer-events-none">
-          {isTasksView ? 'View Photos' : 'View Tasks'}
-        </span>
+      {/* Photos Tab */}
+      <button
+        onClick={() => onTabChange('photos')}
+        className={`
+          flex items-center gap-2 px-6 py-3 rounded-lg font-medium
+          transition-all duration-200 shadow-sm
+          ${activeTab === 'photos'
+            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-105'
+            : 'bg-white text-gray-600 hover:bg-gray-50 hover:shadow'
+          }
+        `}
+        aria-label="View Photos"
+        aria-current={activeTab === 'photos' ? 'page' : undefined}
+      >
+        <Camera size={20} />
+        <span className="hidden sm:inline">Photos</span>
+      </button>
+
+      {/* Leaderboard Tab */}
+      <button
+        onClick={() => onTabChange('leaderboard')}
+        className={`
+          flex items-center gap-2 px-6 py-3 rounded-lg font-medium
+          transition-all duration-200 shadow-sm
+          ${activeTab === 'leaderboard'
+            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md scale-105'
+            : 'bg-white text-gray-600 hover:bg-gray-50 hover:shadow'
+          }
+        `}
+        aria-label="View Leaderboard"
+        aria-current={activeTab === 'leaderboard' ? 'page' : undefined}
+      >
+        <Trophy size={20} />
+        <span className="hidden sm:inline">Leaderboard</span>
       </button>
     </nav>
   );

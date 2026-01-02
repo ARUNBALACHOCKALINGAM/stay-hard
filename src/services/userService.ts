@@ -29,4 +29,43 @@ export const userService = {
       startDate: response.startDate || new Date().toISOString().split('T')[0],
     };
   },
+
+  async updateEmail(userId: string, email: string): Promise<{ message: string; user: User }> {
+    const response = await apiClient.put(`/users/email/${userId}`, { email });
+    return response;
+  },
+
+  async updatePassword(userId: string, password: string): Promise<{ message: string }> {
+    const response = await apiClient.put(`/users/password/${userId}`, { password });
+    return response;
+  },
+
+  async getAchievements(userId: string): Promise<{
+    longestStreak: number;
+    currentStreak: number;
+    totalChallengesCompleted: number;
+    totalTasksCompleted: number;
+    memberSince: string;
+  }> {
+    const response = await apiClient.get(`/users/${userId}/achievements`);
+    return response;
+  },
+
+  async getLeaderboard(): Promise<{
+    leaderboard: Array<{
+      user: {
+        _id: string;
+        name: string;
+        photoUrl?: string;
+        provider?: string;
+      };
+      longestStreak: number;
+      currentStreak: number;
+      completedChallenges: number;
+      totalTasksCompleted: number;
+    }>;
+  }> {
+    const response = await apiClient.get('/users/leaderboard');
+    return response;
+  },
 };

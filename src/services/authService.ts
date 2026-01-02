@@ -21,11 +21,27 @@ class AuthService {
 
       if (response.ok) {
         const data = await response.json();
-        return data.user;
+        console.log('Backend user verification successful:', data.user);
+        
+        // Backend returns full user object, only add firebaseUid from Firebase auth
+        const user: User = {
+          ...data.user,
+          firebaseUid: firebaseUser.uid,
+          emailVerified: firebaseUser.emailVerified, // Override with Firebase's truth
+          lastLogin: data.user.lastLogin ? new Date(data.user.lastLogin) : new Date(),
+          createdAt: new Date(data.user.createdAt),
+          updatedAt: new Date(data.user.updatedAt),
+        };
+        
+        if (!user._id) {
+          console.error('Backend returned user without _id:', data.user);
+        }
+        
+        return user;
       }
 
       // Fallback to client-side user if backend verification fails
-      console.warn('Backend verification failed, using client-side user data');
+      console.warn('Backend verification failed (status:', response.status, '), using client-side user data');
       return this.createFallbackUser(firebaseUser);
       
     } catch (error) {

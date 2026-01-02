@@ -15,10 +15,13 @@ import { Settings } from './components/Settings';
 import { TodoList } from './components/TodoList';
 import { PhotoGallery } from './components/PhotoGallery';
 import { ProgressGrid } from './components/ProgressGrid';
+import { ProfileSettings } from './components/ProfileSettings';
+import { Leaderboard } from './components/Leaderboard';
 
 // Services & Utils
 import { auth } from './firebaseConfig';
 import { authService } from './services/authService';
+import { userService } from './services/userService';
 
 
 // ⭐️ Import the new custom hooks
@@ -39,6 +42,9 @@ export default function App() {
   // Modal for level change confirmation
   const [showLevelChangeModal, setShowLevelChangeModal] = useState(false);
   const [pendingLevel, setPendingLevel] = useState<'Soft' | 'Hard' | 'Custom' | null>(null);
+
+  // Profile settings modal
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   // Memoize updateUser callback to prevent infinite re-renders
   const updateUserChallengeId = useCallback((newChallengeId: string) => {
@@ -75,12 +81,12 @@ export default function App() {
     setData(prev => ({ ...prev, dailyProgress: updater(prev.dailyProgress) }));
   }, []);
 
+  const [activeTab, setActiveTab] = useState<"tasks" | "photos" | "leaderboard">("tasks");
+
   const {
     history,
     selectedChallengeId,
-    activeTab,
     setSelectedChallengeId,
-    setActiveTab,
     handleDaysChange,
     handleLevelChange,
     handleResetProgress
@@ -170,6 +176,37 @@ export default function App() {
     setPendingLevel(null);
   }, []);
 
+  // Profile settings handlers
+  const handleProfileClick = useCallback(() => {
+    setShowProfileSettings(true);
+  }, []);
+
+  const handleCloseProfile = useCallback(() => {
+    setShowProfileSettings(false);
+  }, []);
+
+  const handleUpdateEmail = useCallback(async (email: string) => {
+    if (!user) throw new Error('User not logged in');
+    if (!user._id) {
+      console.error('User object missing _id:', user);
+      throw new Error('User ID not available. Please try logging out and back in.');
+    }
+    await userService.updateEmail(user._id, email);
+    // Update local user state
+    setUser(prev => prev ? { ...prev, email } : null);
+    return;
+  }, [user]);
+
+  const handleUpdatePassword = useCallback(async (password: string) => {
+    if (!user) throw new Error('User not logged in');
+    if (!user._id) {
+      console.error('User object missing _id:', user);
+      throw new Error('User ID not available. Please try logging out and back in.');
+    }
+    await userService.updatePassword(user._id, password);
+    return;
+  }, [user]);
+
 
   // Authentication Effect (Stays here as it manages `user` and `isLoading`)
   useEffect(() => {
@@ -227,7 +264,7 @@ export default function App() {
       <div className="max-w-7xl mx-auto">
         
         {/* Header */}
-        <Header user={user} onLogout={handleLogout} />
+        <Header user={user} onLogout={handleLogout} onProfileClick={handleProfileClick} />
 
         {/* Tab Navigation */}
         <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
@@ -266,7 +303,7 @@ export default function App() {
               history={history}
             />
           </>
-        ) : (
+        ) : activeTab === 'photos' ? (
           /* Photo Gallery */
           <>
             {console.log('Rendering PhotoGallery, photos:', photos)}
@@ -280,6 +317,11 @@ export default function App() {
               onChallengeSelect={setSelectedChallengeId}
             />
           </>
+        ) : (
+          /* Leaderboard */
+          <div className="max-w-4xl mx-auto">
+            <Leaderboard currentUserId={user._id} />
+          </div>
         )}
       </div>
 
@@ -349,6 +391,16 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Profile Settings Modal */}
+      {showProfileSettings && (
+        <ProfileSettings
+          user={user}
+          onClose={handleCloseProfile}
+          onUpdateEmail={handleUpdateEmail}
+          onUpdatePassword={handleUpdatePassword}
+        />
       )}
     </div>
   );
