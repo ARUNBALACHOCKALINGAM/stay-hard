@@ -230,8 +230,7 @@ export function useAppState(user: User | null, updateUser?: (newChallengeId: str
     if (!state.dailyProgress[today]) {
       initializeDailyProgress(today);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, state.level, challengeId]); // Re-run when challengeId becomes available
+  }, [user, state.level, challengeId, state.dailyProgress, today, initializeDailyProgress, appUser?._id]); // Re-run when challengeId becomes available or when dailyProgress changes
 
   // Fetch entire challenge progress when user/challenge changes (for ProgressGrid and history)
   useEffect(() => {
