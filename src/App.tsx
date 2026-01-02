@@ -21,8 +21,11 @@ import { auth } from './firebaseConfig';
 import { authService } from './services/authService';
 
 
-// ⭐️ Import the new custom hook
-import { useAppState } from './hooks/useAppState'; 
+// ⭐️ Import the new custom hooks
+import { useChallengeData } from './hooks/useChallengeData';
+import { useTaskManagement } from './hooks/useTaskManagement';
+import { usePhotoGallery } from './hooks/usePhotoGallery';
+import { useChallengeSettings } from './hooks/useChallengeSettings'; 
 
 export default function App() {
   // State Management for Authentication
@@ -37,25 +40,43 @@ export default function App() {
   const [showLevelChangeModal, setShowLevelChangeModal] = useState(false);
   const [pendingLevel, setPendingLevel] = useState<'Soft' | 'Hard' | 'Custom' | null>(null);
 
-  // ⭐️ Integrate the Custom Hook and destructure all state and handlers
-  const { 
-    state, 
-    activeTab, 
-    todayTasks, 
+  // ⭐️ Use the new modular hooks
+  const { data, setData, loadAllProgressForChallenge, todayTasks, saveToCacheIfPossible } = useChallengeData(
+    user,
+    (newChallengeId) => setUser(prev => (prev ? { ...prev, currentChallengeId: newChallengeId } : null))
+  );
+
+  const { handleTaskToggle, handleTaskAdd, handleTaskDelete, handleTaskEdit } = useTaskManagement({
+    dailyProgress: data.dailyProgress,
+    setDailyProgress: (updater) => setData(prev => ({ ...prev, dailyProgress: updater(prev.dailyProgress) })),
+    saveToCacheIfPossible
+  });
+
+  const { photos, handlePhotoUploadFile, handlePhotoDelete } = usePhotoGallery(
+    user,
+    user?.currentChallengeId
+  );
+
+  const {
     history,
     selectedChallengeId,
-    setActiveTab, 
+    activeTab,
     setSelectedChallengeId,
-    handleDaysChange, 
+    setActiveTab,
+    handleDaysChange,
     handleLevelChange,
-    handleResetProgress,
-    handleTaskToggle,
-    handleTaskAdd,
-    handleTaskDelete,
-    handleTaskEdit,
-    handlePhotoUploadFile,
-    handlePhotoDelete,
-  } = useAppState(user, (newChallengeId) => setUser(prev => prev ? { ...prev, currentChallengeId: newChallengeId } : null));
+    handleResetProgress
+  } = useChallengeSettings(
+    user,
+    data.level,
+    data.days,
+    data.dailyProgress,
+    (newChallengeId) => setUser(prev => (prev ? { ...prev, currentChallengeId: newChallengeId } : null)),
+    (days) => setData(prev => ({ ...prev, days })),
+    (level) => setData(prev => ({ ...prev, level })),
+    (updater) => setData(prev => ({ ...prev, dailyProgress: updater(prev.dailyProgress) })),
+    loadAllProgressForChallenge
+  );
 
   // Authentication Handlers (Kept here as they deal with `user` state)
   const handleLogin = useCallback((loggedInUser: User) => {
@@ -199,8 +220,8 @@ export default function App() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Settings Panel */}
               <Settings
-                days={state.days}
-                level={state.level}
+                days={data.days}
+                level={data.level}
                 onDaysChange={handleDaysChangeRequest}
                 onLevelChange={handleLevelChangeRequest}
                 onResetProgress={handleResetProgress}
@@ -213,30 +234,30 @@ export default function App() {
                 onTaskAdd={handleTaskAdd}
                 onTaskDelete={handleTaskDelete}
                 onTaskEdit={handleTaskEdit}
-                canCustomize={state.level === 'Custom'}
-                startDate={state.startDate}
-                dailyProgress={state.dailyProgress}
+                canCustomize={data.level === 'Custom'}
+                startDate={data.startDate}
+                dailyProgress={data.dailyProgress}
               />
             </div>
 
             {/* Progress Grid */}
             <ProgressGrid
-              days={state.days}
-              startDate={state.startDate}
-              dailyProgress={state.dailyProgress}
+              days={data.days}
+              startDate={data.startDate}
+              dailyProgress={data.dailyProgress}
               history={history}
             />
           </>
         ) : (
           /* Photo Gallery */
           <>
-            {console.log('Rendering PhotoGallery, state.photos:', state.photos)}
+            {console.log('Rendering PhotoGallery, photos:', photos)}
             <PhotoGallery
-              photos={state.photos}
+              photos={photos}
               onPhotoUpload={handlePhotoUploadFile}
               onPhotoDelete={handlePhotoDelete}
               history={history}
-              currentChallenge={{ challengeId: user?.currentChallengeId || '', challengeDays: state.days, challengeLevel: state.level, startDate: state.startDate, status: 'active' }}
+              currentChallenge={{ challengeId: user?.currentChallengeId || '', challengeDays: data.days, challengeLevel: data.level, startDate: data.startDate, status: 'active' }}
               selectedChallengeId={selectedChallengeId}
               onChallengeSelect={setSelectedChallengeId}
             />
@@ -252,7 +273,7 @@ export default function App() {
               Change Challenge Duration
             </h3>
             <p className="text-gray-600 mb-6">
-              {pendingDays ? `Start a new ${pendingDays}-day challenge or ${pendingDays > state.days ? 'extend' : 'reduce'} your current one?` : ''}
+              {pendingDays ? `Start a new ${pendingDays}-day challenge or ${pendingDays > data.days ? 'extend' : 'reduce'} your current one?` : ''}
             </p>
             <div className="flex space-x-3">
               <button
@@ -265,7 +286,7 @@ export default function App() {
                 onClick={confirmDaysChangeWithoutReset}
                 className="flex-1 bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-colors"
               >
-                {pendingDays ? (pendingDays > state.days ? 'Extend' : 'Reduce') : ''}
+                {pendingDays ? (pendingDays > data.days ? 'Extend' : 'Reduce') : ''}
               </button>
               <button
                 onClick={cancelDaysChange}
