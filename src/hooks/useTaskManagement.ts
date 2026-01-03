@@ -48,15 +48,17 @@ export function useTaskManagement({ dailyProgress, setDailyProgress, saveToCache
           [today]: {
             ...currentProgress,
             completionRate,
-            tasks: updatedTasks
+            tasks: updatedTasks,
+            // mark local optimistic update time to avoid immediate overwrite from background sync
+            lastLocalUpdate: Date.now()
           }
         };
-        
+
         // Save to cache immediately for instant persistence
         if (saveToCacheIfPossible) {
           saveToCacheIfPossible(updated);
         }
-        
+
         return updated;
       });
 
@@ -143,7 +145,8 @@ export function useTaskManagement({ dailyProgress, setDailyProgress, saveToCache
           [today]: {
             ...currentProgress,
             completionRate,
-            tasks: updatedTasks
+            tasks: updatedTasks,
+            lastLocalUpdate: Date.now()
           }
         };
       });
@@ -228,7 +231,8 @@ export function useTaskManagement({ dailyProgress, setDailyProgress, saveToCache
           [today]: {
             ...currentProgress,
             completionRate,
-            tasks: updatedTasks
+            tasks: updatedTasks,
+            lastLocalUpdate: Date.now()
           }
         };
       });
@@ -309,7 +313,8 @@ export function useTaskManagement({ dailyProgress, setDailyProgress, saveToCache
           ...prev,
           [today]: {
             ...currentProgress,
-            tasks: updatedTasks
+            tasks: updatedTasks,
+            lastLocalUpdate: Date.now()
           }
         };
       });

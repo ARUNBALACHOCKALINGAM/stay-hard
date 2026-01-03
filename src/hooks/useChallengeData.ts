@@ -88,13 +88,24 @@ export function useChallengeData(
       });
 
       setData(prev => {
+        const now = Date.now();
+        // Merge server progress but avoid overwriting very recent local optimistic updates
+        const mergedDaily: Record<string, DayProgress> = { ...prev.dailyProgress };
+        Object.keys(progressMap).forEach(date => {
+          const local = prev.dailyProgress[date];
+          const serverEntry = progressMap[date];
+          if (local && (local as any).lastLocalUpdate && now - (local as any).lastLocalUpdate < 5000) {
+            // keep local optimistic entry (recent)
+            mergedDaily[date] = local;
+          } else {
+            mergedDaily[date] = serverEntry;
+          }
+        });
+
         const updated = {
           ...prev,
           startDate: earliestDate || getTodayDate(),
-          dailyProgress: {
-            ...prev.dailyProgress,
-            ...progressMap
-          }
+          dailyProgress: mergedDaily
         };
         // Save to cache after server sync
         saveToCacheIfPossible(updated.dailyProgress);
@@ -166,13 +177,22 @@ export function useChallengeData(
           });
 
           setData(prev => {
+            const now = Date.now();
+            const mergedDaily: Record<string, DayProgress> = { ...prev.dailyProgress };
+            Object.keys(progressMap).forEach(date => {
+              const local = prev.dailyProgress[date];
+              const serverEntry = progressMap[date];
+              if (local && (local as any).lastLocalUpdate && now - (local as any).lastLocalUpdate < 5000) {
+                mergedDaily[date] = local;
+              } else {
+                mergedDaily[date] = serverEntry;
+              }
+            });
+
             const updated = {
               ...prev,
               startDate: earliestDate || startDate,
-              dailyProgress: {
-                ...prev.dailyProgress,
-                ...progressMap
-              }
+              dailyProgress: mergedDaily
             };
             // Save to cache after server sync
             saveToCacheIfPossible(updated.dailyProgress);
