@@ -29,6 +29,7 @@ export function useChallengeData(
     dailyProgress: {}
   });
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isFetchingTasks, setIsFetchingTasks] = useState(true);
 
   const appUser = user as NonNullable<User>;
   const challengeId = appUser?.currentChallengeId;
@@ -237,7 +238,6 @@ export function useChallengeData(
           }
         }
       }));
-
       try {
         const progressData = await progressService.getTasksForDate({
           userId: appUser._id,
@@ -270,6 +270,7 @@ export function useChallengeData(
               }
             }
           }));
+          setIsFetchingTasks(false);
         }
       } catch (error) {
         console.error('Error initializing daily progress:', error);
@@ -300,6 +301,7 @@ export function useChallengeData(
     todayProgress: data.dailyProgress[today],
     isSyncing,
     clearCache: () => appUser?._id && challengeId && clearCache({ userId: appUser._id, challengeId }),
-    saveToCacheIfPossible
+    saveToCacheIfPossible,
+    isFetchingTasks
   };
 }

@@ -9,6 +9,7 @@ import type { User } from './types/user';
 // Components
 import { LoginPage } from './components/LoginComponent';
 import { Loading } from './components/Loading';
+import { SimpleLoading } from './components/SimpleLoading';
 import { Header } from './components/Header';
 import { TabNavigation } from './components/TabNavigation';
 import { Settings } from './components/Settings';
@@ -52,7 +53,7 @@ export default function App() {
   }, []);
 
   // ⭐️ Use the new modular hooks
-  const { data, setData, loadAllProgressForChallenge, todayTasks, saveToCacheIfPossible } = useChallengeData(
+  const { data, setData, loadAllProgressForChallenge, todayTasks, saveToCacheIfPossible, isFetchingTasks } = useChallengeData(
     user,
     updateUserChallengeId
   );
@@ -283,7 +284,7 @@ export default function App() {
               />
 
               {/* Todo List Panel */}
-              <TodoList
+              {isFetchingTasks ? <SimpleLoading /> : <TodoList
                 tasks={todayTasks}
                 onTaskToggle={handleTaskToggle}
                 onTaskAdd={handleTaskAdd}
@@ -292,7 +293,7 @@ export default function App() {
                 canCustomize={data.level === 'Custom'}
                 startDate={data.startDate}
                 dailyProgress={data.dailyProgress}
-              />
+              />}
             </div>
 
             {/* Progress Grid */}
