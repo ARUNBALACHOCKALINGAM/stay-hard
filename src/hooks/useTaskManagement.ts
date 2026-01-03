@@ -7,366 +7,241 @@ import progressService from '../services/progressService';
 
 interface UseTaskManagementProps {
   dailyProgress: Record<string, DayProgress>;
-  setDailyProgress: (updater: (prev: Record<string, DayProgress>) => Record<string, DayProgress>) => void;
+  setDailyProgress: (
+    updater: (prev: Record<string, DayProgress>) => Record<string, DayProgress>
+  ) => void;
   saveToCacheIfPossible?: (dailyProgress: Record<string, DayProgress>) => void;
 }
 
 /**
- * Hook to manage task operations with optimistic UI updates
+ * Optimistic task management (client is source of truth)
  */
-export function useTaskManagement({ dailyProgress, setDailyProgress, saveToCacheIfPossible }: UseTaskManagementProps) {
+export function useTaskManagement({
+  dailyProgress,
+  setDailyProgress,
+  saveToCacheIfPossible
+}: UseTaskManagementProps) {
   const today = getTodayDate();
 
-  const handleTaskToggle = useCallback(
-    async (id: string) => {
-      const currentProgress = dailyProgress[today];
-      if (!currentProgress) return;
+  // ---------------- TOGGLE ----------------
+  const handleTaskToggle = useCallback(async (id: string) => {
+    const day = dailyProgress[today];
+    if (!day?.progressId) return;
 
-      const progressId = currentProgress.progressId;
-      if (!progressId) {
-        console.error('No progressId available - cannot sync task toggle to server');
-        return;
-      }
+    const task = day.tasks.find(t => t.id === id);
+    if (!task) return;
 
-      const task = currentProgress.tasks.find(t => t.id === id);
-      if (!task) return;
+    const previous = task.completed;
+    const next = !previous;
 
-      const newCompletedStatus = !task.completed;
+    // 1. Optimistic update
+    setDailyProgress(prev => {
+      const current = prev[today];
+      if (!current) return prev;
 
-      // 1. Optimistic UI Update
-      setDailyProgress(prev => {
-        const currentProgress = prev[today];
-        if (!currentProgress) return prev;
+      const tasks = current.tasks.map(t =>
+        t.id === id ? { ...t, completed: next } : t
+      );
 
-        const updatedTasks = currentProgress.tasks.map(t =>
-          t.id === id ? { ...t, completed: newCompletedStatus } : t
-        );
-        const completionRate = updatedTasks.filter(t => t.completed).length / (updatedTasks.length || 1);
+      const completionRate =
+        tasks.filter(t => t.completed).length / (tasks.length || 1);
 
-        const updated = {
-          ...prev,
-          [today]: {
-            ...currentProgress,
-            completionRate,
-            tasks: updatedTasks,
-            // mark local optimistic update time to avoid immediate overwrite from background sync
-            lastLocalUpdate: Date.now()
-          }
-        };
-
-        // Save to cache immediately for instant persistence
-        if (saveToCacheIfPossible) {
-          saveToCacheIfPossible(updated);
+      const updated = {
+        ...prev,
+        [today]: {
+          ...current,
+          tasks,
+          completionRate,
+          lastLocalUpdate: Date.now()
         }
-
-        return updated;
-      });
-
-      // 2. API Write
-      try {
-        const updatedProgress = await progressService.updateTaskStatus(progressId, id, newCompletedStatus);
-
-        // 3. Sync state with server response
-        if (updatedProgress && Array.isArray(updatedProgress.tasks)) {
-          const tasksFromServer: Task[] = updatedProgress.tasks.map((t: any) => ({
-            id: t.id,
-            text: t.text,
-            completed: Boolean(t.completed),
-            ...(t.completedAt ? { completedAt: new Date(t.completedAt) } : {})
-          }));
-
-          const completionRate = tasksFromServer.length
-            ? tasksFromServer.filter(t => t.completed).length / tasksFromServer.length
-            : 0;
-
-          setDailyProgress(prev => ({
-            ...prev,
-            [today]: {
-              date: today,
-              completionRate,
-              tasks: tasksFromServer,
-              progressId: updatedProgress._id
-            }
-          }));
-        }
-      } catch (error) {
-        console.error('Failed to update task status on server:', error);
-        // Rollback optimistic update
-        setDailyProgress(prev => {
-          const currentProgress = prev[today];
-          if (!currentProgress) return prev;
-
-          const revertedTasks = currentProgress.tasks.map(t =>
-            t.id === id ? { ...t, completed: !newCompletedStatus } : t
-          );
-          const completionRate = revertedTasks.filter(t => t.completed).length / (revertedTasks.length || 1);
-
-          return {
-            ...prev,
-            [today]: {
-              ...currentProgress,
-              completionRate,
-              tasks: revertedTasks
-            }
-          };
-        });
-      }
-    },
-    [today, dailyProgress, setDailyProgress]
-  );
-
-  const handleTaskAdd = useCallback(
-    async (text: string) => {
-      const currentProgress = dailyProgress[today];
-      if (!currentProgress) return;
-
-      const progressId = currentProgress.progressId;
-      if (!progressId) {
-        console.error('No progressId available - cannot sync task add to server');
-        return;
-      }
-
-      const newTask: Task = {
-        id: `task-${Date.now()}`,
-        text: text.trim(),
-        completed: false
       };
 
-      // 1. Optimistic UI Update
+      saveToCacheIfPossible?.(updated);
+      return updated;
+    });
+
+    // 2. Server confirmation
+    try {
+      await progressService.updateTaskStatus(day.progressId, id, next);
+    } catch (err) {
+      // 3. Rollback
       setDailyProgress(prev => {
-        const currentProgress = prev[today];
-        if (!currentProgress) return prev;
+        const current = prev[today];
+        if (!current) return prev;
 
-        const updatedTasks = [...currentProgress.tasks, newTask];
-        const completionRate = updatedTasks.filter(t => t.completed).length / (updatedTasks.length || 1);
+        const tasks = current.tasks.map(t =>
+          t.id === id ? { ...t, completed: previous } : t
+        );
 
-        return {
-          ...prev,
-          [today]: {
-            ...currentProgress,
-            completionRate,
-            tasks: updatedTasks,
-            lastLocalUpdate: Date.now()
-          }
-        };
-      });
-
-      // 2. API Write
-      try {
-        const updatedProgress = await progressService.addTask(progressId, text.trim());
-
-        // 3. Sync state with server response
-        if (updatedProgress && Array.isArray(updatedProgress.tasks)) {
-          const tasksFromServer: Task[] = updatedProgress.tasks.map((t: any) => ({
-            id: t.id,
-            text: t.text,
-            completed: Boolean(t.completed),
-            ...(t.completedAt ? { completedAt: new Date(t.completedAt) } : {})
-          }));
-
-          const completionRate = tasksFromServer.length
-            ? tasksFromServer.filter(t => t.completed).length / tasksFromServer.length
-            : 0;
-
-          setDailyProgress(prev => ({
-            ...prev,
-            [today]: {
-              date: today,
-              completionRate,
-              tasks: tasksFromServer,
-              progressId: updatedProgress._id
-            }
-          }));
-        }
-      } catch (error) {
-        console.error('Failed to add task on server:', error);
-        // Rollback optimistic update
-        setDailyProgress(prev => {
-          const currentProgress = prev[today];
-          if (!currentProgress) return prev;
-
-          const revertedTasks = currentProgress.tasks.filter(t => t.id !== newTask.id);
-          const completionRate =
-            revertedTasks.length > 0 ? revertedTasks.filter(t => t.completed).length / revertedTasks.length : 0;
-
-          return {
-            ...prev,
-            [today]: {
-              ...currentProgress,
-              completionRate,
-              tasks: revertedTasks
-            }
-          };
-        });
-      }
-    },
-    [today, dailyProgress, setDailyProgress]
-  );
-
-  const handleTaskDelete = useCallback(
-    async (id: string) => {
-      const currentProgress = dailyProgress[today];
-      if (!currentProgress) return;
-
-      const progressId = currentProgress.progressId;
-      if (!progressId) {
-        console.error('No progressId available - cannot sync task delete to server');
-        return;
-      }
-
-      const deletedTask = currentProgress.tasks.find(t => t.id === id);
-      if (!deletedTask) return;
-
-      // 1. Optimistic UI Update
-      setDailyProgress(prev => {
-        const currentProgress = prev[today];
-        if (!currentProgress) return prev;
-
-        const updatedTasks = currentProgress.tasks.filter(t => t.id !== id);
         const completionRate =
-          updatedTasks.length > 0 ? updatedTasks.filter(t => t.completed).length / updatedTasks.length : 0;
+          tasks.filter(t => t.completed).length / (tasks.length || 1);
 
         return {
           ...prev,
           [today]: {
-            ...currentProgress,
-            completionRate,
-            tasks: updatedTasks,
-            lastLocalUpdate: Date.now()
+            ...current,
+            tasks,
+            completionRate
           }
         };
       });
+    }
+  }, [dailyProgress, setDailyProgress, today, saveToCacheIfPossible]);
 
-      // 2. API Write
-      try {
-        const updatedProgress = await progressService.deleteTask(progressId, id);
+  // ---------------- ADD ----------------
+  const handleTaskAdd = useCallback(async (text: string) => {
+    const day = dailyProgress[today];
+    if (!day?.progressId) return;
 
-        // 3. Sync state with server response
-        if (updatedProgress && Array.isArray(updatedProgress.tasks)) {
-          const tasksFromServer: Task[] = updatedProgress.tasks.map((t: any) => ({
-            id: t.id,
-            text: t.text,
-            completed: Boolean(t.completed),
-            ...(t.completedAt ? { completedAt: new Date(t.completedAt) } : {})
-          }));
+    const tempId = `temp-${Date.now()}`;
+    const newTask: Task = { id: tempId, text, completed: false };
 
-          const completionRate =
-            tasksFromServer.length > 0 ? tasksFromServer.filter(t => t.completed).length / tasksFromServer.length : 0;
+    // 1. Optimistic add
+    setDailyProgress(prev => {
+      const current = prev[today];
+      if (!current) return prev;
 
-          setDailyProgress(prev => ({
-            ...prev,
-            [today]: {
-              date: today,
-              completionRate,
-              tasks: tasksFromServer,
-              progressId: updatedProgress._id
-            }
-          }));
+      const tasks = [...current.tasks, newTask];
+
+      return {
+        ...prev,
+        [today]: {
+          ...current,
+          tasks,
+          completionRate:
+            tasks.filter(t => t.completed).length / tasks.length,
+          lastLocalUpdate: Date.now()
         }
-      } catch (error) {
-        console.error('Failed to delete task on server:', error);
-        // Rollback optimistic update
-        setDailyProgress(prev => {
-          const currentProgress = prev[today];
-          if (!currentProgress) return prev;
+      };
+    });
 
-          const restoredTasks = [...currentProgress.tasks, deletedTask];
-          const completionRate = restoredTasks.filter(t => t.completed).length / restoredTasks.length;
-
-          return {
-            ...prev,
-            [today]: {
-              ...currentProgress,
-              completionRate,
-              tasks: restoredTasks
-            }
-          };
-        });
-      }
-    },
-    [today, dailyProgress, setDailyProgress]
-  );
-
-  const handleTaskEdit = useCallback(
-    async (id: string, newText: string) => {
-      const currentProgress = dailyProgress[today];
-      if (!currentProgress) return;
-
-      const progressId = currentProgress.progressId;
-      if (!progressId) {
-        console.error('No progressId available - cannot sync task edit to server');
-        return;
-      }
-
-      const oldTask = currentProgress.tasks.find(t => t.id === id);
-      if (!oldTask) return;
-      const oldText = oldTask.text;
-
-      // 1. Optimistic UI Update
+    // 2. Server confirmation
+    try {
+      await progressService.addTask(day.progressId, text);
+    } catch (err) {
+      // 3. Rollback
       setDailyProgress(prev => {
-        const currentProgress = prev[today];
-        if (!currentProgress) return prev;
+        const current = prev[today];
+        if (!current) return prev;
 
-        const updatedTasks = currentProgress.tasks.map(t => (t.id === id ? { ...t, text: newText.trim() } : t));
+        const tasks = current.tasks.filter(t => t.id !== tempId);
 
         return {
           ...prev,
           [today]: {
-            ...currentProgress,
-            tasks: updatedTasks,
-            lastLocalUpdate: Date.now()
+            ...current,
+            tasks,
+            completionRate:
+              tasks.length > 0
+                ? tasks.filter(t => t.completed).length / tasks.length
+                : 0
           }
         };
       });
+    }
+  }, [dailyProgress, setDailyProgress, today]);
 
-      // 2. API Write
-      try {
-        const updatedProgress = await progressService.updateTaskText(progressId, id, newText.trim());
+  // ---------------- DELETE ----------------
+  const handleTaskDelete = useCallback(async (id: string) => {
+    const day = dailyProgress[today];
+    if (!day?.progressId) return;
 
-        // 3. Sync state with server response
-        if (updatedProgress && Array.isArray(updatedProgress.tasks)) {
-          const tasksFromServer: Task[] = updatedProgress.tasks.map((t: any) => ({
-            id: t.id,
-            text: t.text,
-            completed: Boolean(t.completed),
-            ...(t.completedAt ? { completedAt: new Date(t.completedAt) } : {})
-          }));
+    const deleted = day.tasks.find(t => t.id === id);
+    if (!deleted) return;
 
-          const completionRate = tasksFromServer.length
-            ? tasksFromServer.filter(t => t.completed).length / tasksFromServer.length
-            : 0;
+    // 1. Optimistic delete
+    setDailyProgress(prev => {
+      const current = prev[today];
+      if (!current) return prev;
 
-          setDailyProgress(prev => ({
-            ...prev,
-            [today]: {
-              date: today,
-              completionRate,
-              tasks: tasksFromServer,
-              progressId: updatedProgress._id
-            }
-          }));
+      const tasks = current.tasks.filter(t => t.id !== id);
+
+      return {
+        ...prev,
+        [today]: {
+          ...current,
+          tasks,
+          completionRate:
+            tasks.length > 0
+              ? tasks.filter(t => t.completed).length / tasks.length
+              : 0,
+          lastLocalUpdate: Date.now()
         }
-      } catch (error) {
-        console.error('Failed to update task text on server:', error);
-        // Rollback optimistic update
-        setDailyProgress(prev => {
-          const currentProgress = prev[today];
-          if (!currentProgress) return prev;
+      };
+    });
 
-          const revertedTasks = currentProgress.tasks.map(t => (t.id === id ? { ...t, text: oldText } : t));
+    // 2. Server confirmation
+    try {
+      await progressService.deleteTask(day.progressId, id);
+    } catch (err) {
+      // 3. Rollback
+      setDailyProgress(prev => {
+        const current = prev[today];
+        if (!current) return prev;
 
-          return {
-            ...prev,
-            [today]: {
-              ...currentProgress,
-              tasks: revertedTasks
-            }
-          };
-        });
-      }
-    },
-    [today, dailyProgress, setDailyProgress]
-  );
+        const tasks = [...current.tasks, deleted];
+
+        return {
+          ...prev,
+          [today]: {
+            ...current,
+            tasks,
+            completionRate:
+              tasks.filter(t => t.completed).length / tasks.length
+          }
+        };
+      });
+    }
+  }, [dailyProgress, setDailyProgress, today]);
+
+  // ---------------- EDIT ----------------
+  const handleTaskEdit = useCallback(async (id: string, newText: string) => {
+    const day = dailyProgress[today];
+    if (!day?.progressId) return;
+
+    const task = day.tasks.find(t => t.id === id);
+    if (!task) return;
+
+    const oldText = task.text;
+
+    // 1. Optimistic edit
+    setDailyProgress(prev => {
+      const current = prev[today];
+      if (!current) return prev;
+
+      return {
+        ...prev,
+        [today]: {
+          ...current,
+          tasks: current.tasks.map(t =>
+            t.id === id ? { ...t, text: newText } : t
+          ),
+          lastLocalUpdate: Date.now()
+        }
+      };
+    });
+
+    // 2. Server confirmation
+    try {
+      await progressService.updateTaskText(day.progressId, id, newText);
+    } catch (err) {
+      // 3. Rollback
+      setDailyProgress(prev => {
+        const current = prev[today];
+        if (!current) return prev;
+
+        return {
+          ...prev,
+          [today]: {
+            ...current,
+            tasks: current.tasks.map(t =>
+              t.id === id ? { ...t, text: oldText } : t
+            )
+          }
+        };
+      });
+    }
+  }, [dailyProgress, setDailyProgress, today]);
 
   return {
     handleTaskToggle,

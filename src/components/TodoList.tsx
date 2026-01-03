@@ -25,7 +25,7 @@ export const TodoList: React.FC<{
   const isViewingPastDay = selectedDate < today;
   
   // Get tasks for the selected date
-  const displayedTasks = dailyProgress[selectedDate]?.tasks || tasks;
+  const displayedTasks = dailyProgress[selectedDate]?.tasks || [];
 
   const handleAdd = () => {
     if (newTask.trim()) {
