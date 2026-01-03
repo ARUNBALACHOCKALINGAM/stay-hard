@@ -19,6 +19,8 @@ export const TodoList: React.FC<{
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
+
+  console.log(tasks)
   
   const today = getTodayDate();
   const isViewingToday = selectedDate === today;
